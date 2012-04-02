@@ -289,6 +289,8 @@ struct _ClutterActorIter
   gpointer CLUTTER_PRIVATE_FIELD (dummy5);
 };
 
+GType clutter_actor_iter_get_type (void) G_GNUC_CONST;
+
 GType clutter_actor_get_type (void) G_GNUC_CONST;
 
 ClutterActor *                  clutter_actor_new                               (void);

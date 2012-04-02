@@ -16946,6 +16946,33 @@ clutter_actor_iter_destroy (ClutterActorIter *iter)
     }
 }
 
+static gpointer
+clutter_actor_iter_copy (gpointer data)
+{
+  return g_slice_dup (ClutterActorIter, data);
+}
+
+static void
+clutter_actor_iter_free (gpointer data)
+{
+  if (G_LIKELY (data))
+    g_slice_free (ClutterActorIter, data);
+}
+
+GType
+clutter_actor_iter_get_type (void)
+{
+  static GType our_type = 0;
+
+  if (G_UNLIKELY (our_type == 0))
+    our_type = g_boxed_type_register_static (g_intern_static_string ("ClutterActorIter"),
+                                             clutter_actor_iter_copy,
+                                             clutter_actor_iter_free);
+
+  return our_type;
+}
+
+
 static const ClutterAnimationInfo default_animation_info = {
   NULL,         /* transitions */
   NULL,         /* states */
