@@ -108,7 +108,7 @@ test_swipe_action_main (int argc, char *argv[])
   clutter_actor_set_size (rect, 150, 150);
   clutter_actor_set_position (rect, 10, 100);
   clutter_actor_set_reactive (rect, TRUE);
-  clutter_container_add_actor (CLUTTER_CONTAINER (stage), rect);
+  clutter_actor_add_child (stage, rect);
   attach_action (rect, VERTICAL);
 
   rect = clutter_rectangle_new_with_color (CLUTTER_COLOR_Blue);
@@ -116,7 +116,7 @@ test_swipe_action_main (int argc, char *argv[])
   clutter_actor_set_size (rect, 150, 150);
   clutter_actor_set_position (rect, 170, 100);
   clutter_actor_set_reactive (rect, TRUE);
-  clutter_container_add_actor (CLUTTER_CONTAINER (stage), rect);
+  clutter_actor_add_child (stage, rect);
   attach_action (rect, HORIZONTAL);
 
   rect = clutter_rectangle_new_with_color (CLUTTER_COLOR_Green);
@@ -124,7 +124,7 @@ test_swipe_action_main (int argc, char *argv[])
   clutter_actor_set_size (rect, 150, 150);
   clutter_actor_set_position (rect, 330, 100);
   clutter_actor_set_reactive (rect, TRUE);
-  clutter_container_add_actor (CLUTTER_CONTAINER (stage), rect);
+  clutter_actor_add_child (stage, rect);
   attach_action (rect, BOTH);
 
   {
@@ -171,7 +171,7 @@ test_swipe_action_main (int argc, char *argv[])
            - clutter_actor_get_height (box)
            - 12.0;
 
-    clutter_container_add_actor (CLUTTER_CONTAINER (stage), box);
+    clutter_actor_add_child (stage, box);
     clutter_actor_add_constraint (box, clutter_bind_constraint_new (stage,
                                                                     CLUTTER_BIND_X,
                                                                     12.0));
@@ -180,7 +180,7 @@ test_swipe_action_main (int argc, char *argv[])
                                                                     offset));
   }
 
-  clutter_actor_show_all (stage);
+  clutter_actor_show (stage);
 
   clutter_main ();
 

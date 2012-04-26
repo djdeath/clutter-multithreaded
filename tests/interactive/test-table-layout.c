@@ -14,7 +14,7 @@ set_text (ClutterActor *actor, const gchar *text)
 {
   GList *children, *l;
 
-  children = clutter_container_get_children (CLUTTER_CONTAINER (actor));
+  children = clutter_actor_get_children (actor);
   for (l = children; l; l = g_list_next (l)) {
     if (CLUTTER_IS_TEXT (l->data)) {
       clutter_text_set_text (CLUTTER_TEXT (l->data), text);
@@ -25,11 +25,11 @@ set_text (ClutterActor *actor, const gchar *text)
 }
 
 static void
-toggle_expand (ClutterActor *actor, ClutterEvent *event, ClutterBox *box)
+toggle_expand (ClutterActor *actor, ClutterEvent *event, ClutterActor *box)
 {
   gboolean x_expand;
   gchar *label;
-  ClutterLayoutManager *layout = clutter_box_get_layout_manager (box);
+  ClutterLayoutManager *layout = clutter_actor_get_layout_manager (box);
 
 
   clutter_layout_manager_child_get (layout, CLUTTER_CONTAINER (box), actor,
@@ -68,13 +68,13 @@ get_alignment_name (ClutterTableAlignment alignment)
 }
 
 static void
-randomise_align (ClutterActor *actor, ClutterEvent *event, ClutterBox *box)
+randomise_align (ClutterActor *actor, ClutterEvent *event, ClutterActor *box)
 {
   ClutterTableAlignment x_align, y_align;
   gchar *label;
   ClutterLayoutManager *layout;
 
-  layout = clutter_box_get_layout_manager (box);
+  layout = clutter_actor_get_layout_manager (box);
 
   x_align = (ClutterTableAlignment) g_random_int_range (0, 3);
   y_align = (ClutterTableAlignment) g_random_int_range (0, 3);
@@ -106,24 +106,24 @@ create_cell (ClutterActor *actor, const gchar *color_str)
   ClutterActor *rectangle;
   ClutterColor color;
 
-  result =
-    clutter_box_new (clutter_bin_layout_new (CLUTTER_BIN_ALIGNMENT_FILL,
-                                             CLUTTER_BIN_ALIGNMENT_FILL));
+  result = clutter_actor_new ();
+  clutter_actor_set_layout_manager (result, clutter_bin_layout_new (CLUTTER_BIN_ALIGNMENT_FILL,
+                                                                    CLUTTER_BIN_ALIGNMENT_FILL));
 
-  rectangle = clutter_rectangle_new ();
+  rectangle = clutter_actor_new ();
   clutter_color_from_string (&color, color_str);
-  clutter_rectangle_set_color (CLUTTER_RECTANGLE (rectangle), (const ClutterColor *) &color);
+  clutter_actor_set_background_color (rectangle, (const ClutterColor *) &color);
   clutter_color_from_string (&color, "#000f");
-  clutter_rectangle_set_border_color (CLUTTER_RECTANGLE (rectangle), (const ClutterColor *) &color);
-  clutter_rectangle_set_border_width (CLUTTER_RECTANGLE (rectangle), 2);
+  /* clutter_rectangle_set_border_color (CLUTTER_RECTANGLE (rectangle), (const ClutterColor *) &color); */
+  /* clutter_rectangle_set_border_width (CLUTTER_RECTANGLE (rectangle), 2); */
 
   clutter_actor_show (rectangle);
   clutter_actor_set_reactive (result, TRUE);
-  clutter_container_add_actor (CLUTTER_CONTAINER (result), rectangle);
-  clutter_box_pack (CLUTTER_BOX (result), actor,
-                    "x-align", CLUTTER_BIN_ALIGNMENT_CENTER,
-                    "y-align", CLUTTER_BIN_ALIGNMENT_CENTER,
-                    NULL);
+  clutter_actor_add_child (result, rectangle);
+  /* clutter_box_pack (CLUTTER_BOX (result), actor, */
+  /*                   "x-align", CLUTTER_BIN_ALIGNMENT_CENTER, */
+  /*                   "y-align", CLUTTER_BIN_ALIGNMENT_CENTER, */
+  /*                   NULL); */
 
   return result;
 }
@@ -181,10 +181,11 @@ test_table_layout_main (int argc, char *argv[])
   clutter_table_layout_set_column_spacing (CLUTTER_TABLE_LAYOUT (layout), 10);
   clutter_table_layout_set_row_spacing (CLUTTER_TABLE_LAYOUT (layout), 10);
 
-  box = clutter_box_new (layout);
-  clutter_container_add_actor (CLUTTER_CONTAINER (stage), box);
-  clutter_actor_add_constraint (box, clutter_bind_constraint_new (stage, CLUTTER_BIND_WIDTH, -10.0));
-  clutter_actor_add_constraint (box, clutter_bind_constraint_new (stage, CLUTTER_BIND_HEIGHT, -10.0));
+  box = clutter_actor_new ();
+  clutter_actor_set_layout_manager (box, layout);
+  clutter_actor_add_child (stage, box);
+  /* clutter_actor_add_constraint (box, clutter_bind_constraint_new (stage, CLUTTER_BIND_WIDTH, -10.0)); */
+  /* clutter_actor_add_constraint (box, clutter_bind_constraint_new (stage, CLUTTER_BIND_HEIGHT, -10.0)); */
 
   actor1 = create_text ("label 1", "#f66f");
   file = g_build_filename (TESTS_DATADIR, "redhand.png", NULL);

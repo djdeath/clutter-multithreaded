@@ -87,7 +87,7 @@ gboolean task (gpointer user_data)
     }
 
   for (i = 0; i < 3; i++)
-    clutter_container_add_actor (CLUTTER_CONTAINER (stage), image[i]);
+    clutter_actor_add_child (stage, image[i]);
 
   for (i = 0; i < 3; i++)
     {
@@ -97,7 +97,7 @@ gboolean task (gpointer user_data)
       clone[i] = clutter_clone_new (image[i]);
       g_signal_connect (image[i], "size-change",
                         G_CALLBACK (size_change_cb), clone[i]);
-      clutter_container_add_actor (CLUTTER_CONTAINER (stage), clone[i]);
+      clutter_actor_add_child (stage, clone[i]);
       clutter_actor_set_position (clone[i], 50 + i * 100, 150 + i * 50 + 100);
     }
 
@@ -135,7 +135,7 @@ test_texture_async_main (int argc, char *argv[])
   path = (argc > 1)
        ? g_strdup (argv[1])
        : g_build_filename (TESTS_DATADIR, "redhand.png", NULL);
- 
+
   clutter_threads_add_timeout_full (G_PRIORITY_DEFAULT, 500,
                                     task, path,
                                     cleanup_task);

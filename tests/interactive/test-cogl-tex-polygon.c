@@ -333,7 +333,7 @@ on_toggle_click (ClutterActor *button, ClutterEvent *event,
 static ClutterActor *
 make_toggle (const char *label_text, gboolean *toggle_val)
 {
-  ClutterActor *group = clutter_group_new ();
+  ClutterActor *group = clutter_actor_new ();
   ClutterActor *label = clutter_text_new_with_text ("Sans 14", label_text);
   ClutterActor *button = clutter_text_new_with_text ("Sans 14", "");
 
@@ -342,7 +342,8 @@ make_toggle (const char *label_text, gboolean *toggle_val)
   update_toggle_text (CLUTTER_TEXT (button), *toggle_val);
 
   clutter_actor_set_position (button, clutter_actor_get_width (label) + 10, 0);
-  clutter_container_add (CLUTTER_CONTAINER (group), label, button, NULL);
+  clutter_actor_add_child (group, label);
+  clutter_actor_add_child (group, button);
 
   g_signal_connect (button, "button-press-event", G_CALLBACK (on_toggle_click),
 		    toggle_val);
@@ -366,18 +367,18 @@ test_cogl_tex_polygon_main (int argc, char *argv[])
 
   /* Stage */
   stage = clutter_stage_new ();
-  clutter_stage_set_color (CLUTTER_STAGE (stage), &blue);
+  clutter_actor_set_background_color (stage, &blue);
   clutter_actor_set_size (stage, 640, 480);
   clutter_stage_set_title (CLUTTER_STAGE (stage), "Cogl Texture Polygon");
   g_signal_connect (stage, "destroy", G_CALLBACK (clutter_main_quit), NULL);
 
   /* Cogl Box */
   coglbox = test_coglbox_new ();
-  clutter_container_add_actor (CLUTTER_CONTAINER (stage), coglbox);
+  clutter_actor_add_child (stage, coglbox);
 
   /* Timeline for animation */
   timeline = clutter_timeline_new (6000);
-  clutter_timeline_set_loop (timeline, TRUE);
+  clutter_timeline_set_repeat_count (timeline, -1);
   g_signal_connect (timeline, "new-frame", G_CALLBACK (frame_cb), coglbox);
   clutter_timeline_start (timeline);
 
@@ -401,11 +402,9 @@ test_cogl_tex_polygon_main (int argc, char *argv[])
 			       + clutter_actor_get_y (filtering_toggle)) / 2
 			      - clutter_actor_get_height (note) / 2);
 
-  clutter_container_add (CLUTTER_CONTAINER (stage),
-			 slicing_toggle,
-			 filtering_toggle,
-			 note,
-			 NULL);
+  clutter_actor_add_child (stage, slicing_toggle);
+  clutter_actor_add_child (stage, filtering_toggle);
+  clutter_actor_add_child (stage, note);
 
   clutter_actor_show (stage);
 

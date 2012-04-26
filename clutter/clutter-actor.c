@@ -472,7 +472,6 @@
 
 #include <cogl/cogl.h>
 
-#define CLUTTER_DISABLE_DEPRECATION_WARNINGS
 #define CLUTTER_ENABLE_EXPERIMENTAL_API
 
 #include "clutter-actor-private.h"
@@ -505,10 +504,6 @@
 #include "clutter-timeline.h"
 #include "clutter-transition.h"
 #include "clutter-units.h"
-
-#include "deprecated/clutter-actor.h"
-#include "deprecated/clutter-behaviour.h"
-#include "deprecated/clutter-container.h"
 
 #define CLUTTER_ACTOR_GET_PRIVATE(obj) \
 (G_TYPE_INSTANCE_GET_PRIVATE ((obj), CLUTTER_TYPE_ACTOR, ClutterActorPrivate))
@@ -1516,28 +1511,6 @@ clutter_actor_show (ClutterActor *self)
   g_object_thaw_notify (G_OBJECT (self));
 }
 
-/**
- * clutter_actor_show_all:
- * @self: a #ClutterActor
- *
- * Calls clutter_actor_show() on all children of an actor (if any).
- *
- * Since: 0.2
- *
- * Deprecated: 1.10: Actors are visible by default
- */
-void
-clutter_actor_show_all (ClutterActor *self)
-{
-  ClutterActorClass *klass;
-
-  g_return_if_fail (CLUTTER_IS_ACTOR (self));
-
-  klass = CLUTTER_ACTOR_GET_CLASS (self);
-  if (klass->show_all)
-    klass->show_all (self);
-}
-
 static void
 clutter_actor_real_hide (ClutterActor *self)
 {
@@ -1609,29 +1582,6 @@ clutter_actor_hide (ClutterActor *self)
     clutter_actor_queue_redraw (priv->parent);
 
   g_object_thaw_notify (G_OBJECT (self));
-}
-
-/**
- * clutter_actor_hide_all:
- * @self: a #ClutterActor
- *
- * Calls clutter_actor_hide() on all child actors (if any).
- *
- * Since: 0.2
- *
- * Deprecated: 1.10: Using clutter_actor_hide() on the actor will
- *   prevent its children from being painted as well.
- */
-void
-clutter_actor_hide_all (ClutterActor *self)
-{
-  ClutterActorClass *klass;
-
-  g_return_if_fail (CLUTTER_IS_ACTOR (self));
-
-  klass = CLUTTER_ACTOR_GET_CLASS (self);
-  if (klass->hide_all)
-    klass->hide_all (self);
 }
 
 /**
@@ -8466,63 +8416,6 @@ clutter_actor_set_allocation (ClutterActor           *self,
 }
 
 /**
- * clutter_actor_set_geometry:
- * @self: A #ClutterActor
- * @geometry: A #ClutterGeometry
- *
- * Sets the actor's fixed position and forces its minimum and natural
- * size, in pixels. This means the untransformed actor will have the
- * given geometry. This is the same as calling clutter_actor_set_position()
- * and clutter_actor_set_size().
- *
- * Deprecated: 1.10: Use clutter_actor_set_position() and
- *   clutter_actor_set_size() instead.
- */
-void
-clutter_actor_set_geometry (ClutterActor          *self,
-			    const ClutterGeometry *geometry)
-{
-  g_object_freeze_notify (G_OBJECT (self));
-
-  clutter_actor_set_position (self, geometry->x, geometry->y);
-  clutter_actor_set_size (self, geometry->width, geometry->height);
-
-  g_object_thaw_notify (G_OBJECT (self));
-}
-
-/**
- * clutter_actor_get_geometry:
- * @self: A #ClutterActor
- * @geometry: (out caller-allocates): A location to store actors #ClutterGeometry
- *
- * Gets the size and position of an actor relative to its parent
- * actor. This is the same as calling clutter_actor_get_position() and
- * clutter_actor_get_size(). It tries to "do what you mean" and get the
- * requested size and position if the actor's allocation is invalid.
- *
- * Deprecated: 1.10: Use clutter_actor_get_position() and
- *   clutter_actor_get_size(), or clutter_actor_get_allocation_geometry()
- *   instead.
- */
-void
-clutter_actor_get_geometry (ClutterActor    *self,
-			    ClutterGeometry *geometry)
-{
-  gfloat x, y, width, height;
-
-  g_return_if_fail (CLUTTER_IS_ACTOR (self));
-  g_return_if_fail (geometry != NULL);
-
-  clutter_actor_get_position (self, &x, &y);
-  clutter_actor_get_size (self, &width, &height);
-
-  geometry->x = (int) x;
-  geometry->y = (int) y;
-  geometry->width = (int) width;
-  geometry->height = (int) height;
-}
-
-/**
  * clutter_actor_set_position:
  * @self: A #ClutterActor
  * @x: New left position of actor in pixels.
@@ -10071,26 +9964,6 @@ clutter_actor_get_name (ClutterActor *self)
   return self->priv->name;
 }
 
-/**
- * clutter_actor_get_gid:
- * @self: A #ClutterActor
- *
- * Retrieves the unique id for @self.
- *
- * Return value: Globally unique value for this object instance.
- *
- * Since: 0.6
- *
- * Deprecated: 1.8: The id is not used any longer.
- */
-guint32
-clutter_actor_get_gid (ClutterActor *self)
-{
-  g_return_val_if_fail (CLUTTER_IS_ACTOR (self), 0);
-
-  return self->priv->id;
-}
-
 static inline void
 clutter_actor_set_depth_internal (ClutterActor *self,
                                   float         depth)
@@ -11082,43 +10955,6 @@ clutter_actor_insert_child_below (ClutterActor *self,
 }
 
 /**
- * clutter_actor_set_parent:
- * @self: A #ClutterActor
- * @parent: A new #ClutterActor parent
- *
- * Sets the parent of @self to @parent.
- *
- * This function will result in @parent acquiring a reference on @self,
- * eventually by sinking its floating reference first. The reference
- * will be released by clutter_actor_unparent().
- *
- * This function should only be called by legacy #ClutterActor<!-- -->s
- * implementing the #ClutterContainer interface.
- *
- * Deprecated: 1.10: Use clutter_actor_add_child() instead.
- */
-void
-clutter_actor_set_parent (ClutterActor *self,
-		          ClutterActor *parent)
-{
-  g_return_if_fail (CLUTTER_IS_ACTOR (self));
-  g_return_if_fail (CLUTTER_IS_ACTOR (parent));
-  g_return_if_fail (self != parent);
-  g_return_if_fail (self->priv->parent == NULL);
-
-  /* as this function will be called inside ClutterContainer::add
-   * implementations or when building up a composite actor, we have
-   * to preserve the old behaviour, and not create child meta or
-   * emit the ::actor-added signal, to avoid recursion or double
-   * emissions
-   */
-  clutter_actor_add_child_internal (parent, self,
-                                    ADD_CHILD_LEGACY_FLAGS,
-                                    insert_child_at_depth,
-                                    NULL);
-}
-
-/**
  * clutter_actor_get_parent:
  * @self: A #ClutterActor
  *
@@ -11348,134 +11184,6 @@ clutter_actor_replace_child (ClutterActor *self,
 }
 
 /**
- * clutter_actor_unparent:
- * @self: a #ClutterActor
- *
- * Removes the parent of @self.
- *
- * This will cause the parent of @self to release the reference
- * acquired when calling clutter_actor_set_parent(), so if you
- * want to keep @self you will have to acquire a reference of
- * your own, through g_object_ref().
- *
- * This function should only be called by legacy #ClutterActor<!-- -->s
- * implementing the #ClutterContainer interface.
- *
- * Since: 0.1.1
- *
- * Deprecated: 1.10: Use clutter_actor_remove_child() instead.
- */
-void
-clutter_actor_unparent (ClutterActor *self)
-{
-  g_return_if_fail (CLUTTER_IS_ACTOR (self));
-
-  if (self->priv->parent == NULL)
-    return;
-
-  clutter_actor_remove_child_internal (self->priv->parent, self,
-                                       REMOVE_CHILD_LEGACY_FLAGS);
-}
-
-/**
- * clutter_actor_reparent:
- * @self: a #ClutterActor
- * @new_parent: the new #ClutterActor parent
- *
- * Resets the parent actor of @self.
- *
- * This function is logically equivalent to calling clutter_actor_unparent()
- * and clutter_actor_set_parent(), but more efficiently implemented, as it
- * ensures the child is not finalized when unparented, and emits the
- * #ClutterActor::parent-set signal only once.
- *
- * In reality, calling this function is less useful than it sounds, as some
- * application code may rely on changes in the intermediate state between
- * removal and addition of the actor from its old parent to the @new_parent.
- * Thus, it is strongly encouraged to avoid using this function in application
- * code.
- *
- * Since: 0.2
- *
- * Deprecated: 1.10: Use clutter_actor_remove_child() and
- *   clutter_actor_add_child() instead; remember to take a reference on
- *   the actor being removed before calling clutter_actor_remove_child()
- *   to avoid the reference count dropping to zero and the actor being
- *   destroyed.
- */
-void
-clutter_actor_reparent (ClutterActor *self,
-                        ClutterActor *new_parent)
-{
-  ClutterActorPrivate *priv;
-
-  g_return_if_fail (CLUTTER_IS_ACTOR (self));
-  g_return_if_fail (CLUTTER_IS_ACTOR (new_parent));
-  g_return_if_fail (self != new_parent);
-
-  if (CLUTTER_ACTOR_IS_TOPLEVEL (self))
-    {
-      g_warning ("Cannot set a parent on a toplevel actor");
-      return;
-    }
-
-  if (CLUTTER_ACTOR_IN_DESTRUCTION (self))
-    {
-      g_warning ("Cannot set a parent currently being destroyed");
-      return;
-    }
-
-  priv = self->priv;
-
-  if (priv->parent != new_parent)
-    {
-      ClutterActor *old_parent;
-
-      CLUTTER_SET_PRIVATE_FLAGS (self, CLUTTER_IN_REPARENT);
-
-      old_parent = priv->parent;
-
-      g_object_ref (self);
-
-      if (old_parent != NULL)
-        {
-         /* go through the Container implementation if this is a regular
-          * child and not an internal one
-          */
-         if (!CLUTTER_ACTOR_IS_INTERNAL_CHILD (self))
-           {
-             ClutterContainer *parent = CLUTTER_CONTAINER (old_parent);
-
-             /* this will have to call unparent() */
-             clutter_container_remove_actor (parent, self);
-           }
-         else
-           clutter_actor_remove_child_internal (old_parent, self,
-                                                REMOVE_CHILD_LEGACY_FLAGS);
-        }
-
-      /* Note, will call set_parent() */
-      if (!CLUTTER_ACTOR_IS_INTERNAL_CHILD (self))
-        clutter_container_add_actor (CLUTTER_CONTAINER (new_parent), self);
-      else
-        clutter_actor_add_child_internal (new_parent, self,
-                                          ADD_CHILD_LEGACY_FLAGS,
-                                          insert_child_at_depth,
-                                          NULL);
-
-      /* we emit the ::parent-set signal once */
-      g_signal_emit (self, actor_signals[PARENT_SET], 0, old_parent);
-
-      CLUTTER_UNSET_PRIVATE_FLAGS (self, CLUTTER_IN_REPARENT);
-
-      /* the IN_REPARENT flag suspends state updates */
-      clutter_actor_update_map_state (self, MAP_STATE_CHECK);
-
-      g_object_unref (self);
-   }
-}
-
-/**
  * clutter_actor_contains:
  * @self: A #ClutterActor
  * @descendant: A #ClutterActor, possibly contained in @self
@@ -11623,134 +11331,6 @@ clutter_actor_set_child_at_index (ClutterActor *self,
                                     GINT_TO_POINTER (index_));
 
   clutter_actor_queue_relayout (self);
-}
-
-/**
- * clutter_actor_raise:
- * @self: A #ClutterActor
- * @below: (allow-none): A #ClutterActor to raise above.
- *
- * Puts @self above @below.
- *
- * Both actors must have the same parent, and the parent must implement
- * the #ClutterContainer interface
- *
- * This function calls clutter_container_raise_child() internally.
- *
- * Deprecated: 1.10: Use clutter_actor_set_child_above_sibling() instead.
- */
-void
-clutter_actor_raise (ClutterActor *self,
-                     ClutterActor *below)
-{
-  ClutterActor *parent;
-
-  g_return_if_fail (CLUTTER_IS_ACTOR (self));
-
-  parent = clutter_actor_get_parent (self);
-  if (parent == NULL)
-    {
-      g_warning ("%s: Actor '%s' is not inside a container",
-                 G_STRFUNC,
-                 _clutter_actor_get_debug_name (self));
-      return;
-    }
-
-  if (below != NULL)
-    {
-      if (parent != clutter_actor_get_parent (below))
-        {
-          g_warning ("%s Actor '%s' is not in the same container as "
-                     "actor '%s'",
-                     G_STRFUNC,
-                     _clutter_actor_get_debug_name (self),
-                     _clutter_actor_get_debug_name (below));
-          return;
-        }
-    }
-
-  clutter_container_raise_child (CLUTTER_CONTAINER (parent), self, below);
-}
-
-/**
- * clutter_actor_lower:
- * @self: A #ClutterActor
- * @above: (allow-none): A #ClutterActor to lower below
- *
- * Puts @self below @above.
- *
- * Both actors must have the same parent, and the parent must implement
- * the #ClutterContainer interface.
- *
- * This function calls clutter_container_lower_child() internally.
- *
- * Deprecated: 1.10: Use clutter_actor_set_child_below_sibling() instead.
- */
-void
-clutter_actor_lower (ClutterActor *self,
-                     ClutterActor *above)
-{
-  ClutterActor *parent;
-
-  g_return_if_fail (CLUTTER_IS_ACTOR (self));
-
-  parent = clutter_actor_get_parent (self);
-  if (parent == NULL)
-    {
-      g_warning ("%s: Actor of type %s is not inside a container",
-                 G_STRFUNC,
-                 _clutter_actor_get_debug_name (self));
-      return;
-    }
-
-  if (above)
-    {
-      if (parent != clutter_actor_get_parent (above))
-        {
-          g_warning ("%s: Actor '%s' is not in the same container as "
-                     "actor '%s'",
-                     G_STRFUNC,
-                     _clutter_actor_get_debug_name (self),
-                     _clutter_actor_get_debug_name (above));
-          return;
-        }
-    }
-
-  clutter_container_lower_child (CLUTTER_CONTAINER (parent), self, above);
-}
-
-/**
- * clutter_actor_raise_top:
- * @self: A #ClutterActor
- *
- * Raises @self to the top.
- *
- * This function calls clutter_actor_raise() internally.
- *
- * Deprecated: 1.10: Use clutter_actor_set_child_above_sibling() with
- *   a %NULL sibling, instead.
- */
-void
-clutter_actor_raise_top (ClutterActor *self)
-{
-  clutter_actor_raise (self, NULL);
-}
-
-/**
- * clutter_actor_lower_bottom:
- * @self: A #ClutterActor
- *
- * Lowers @self to the bottom.
- *
- * This function calls clutter_actor_lower() internally.
- *
- * Deprecated: 1.10: Use clutter_actor_set_child_below_sibling() with
- *   a %NULL sibling, instead.
- */
-void
-clutter_actor_lower_bottom (ClutterActor *self)
-{
-  clutter_actor_lower (self, NULL);
 }
 
 /*
@@ -14294,102 +13874,6 @@ clutter_actor_get_text_direction (ClutterActor *self)
     priv->text_direction = clutter_get_default_text_direction ();
 
   return priv->text_direction;
-}
-
-/**
- * clutter_actor_push_internal:
- * @self: a #ClutterActor
- *
- * Should be used by actors implementing the #ClutterContainer and with
- * internal children added through clutter_actor_set_parent(), for instance:
- *
- * |[
- *   static void
- *   my_actor_init (MyActor *self)
- *   {
- *     self->priv = SELF_ACTOR_GET_PRIVATE (self);
- *
- *     clutter_actor_push_internal (CLUTTER_ACTOR (self));
- *
- *     /&ast; calling clutter_actor_set_parent() now will result in
- *      &ast; the internal flag being set on a child of MyActor
- *      &ast;/
- *
- *     /&ast; internal child - a background texture &ast;/
- *     self->priv->background_tex = clutter_texture_new ();
- *     clutter_actor_set_parent (self->priv->background_tex,
- *                               CLUTTER_ACTOR (self));
- *
- *     /&ast; internal child - a label &ast;/
- *     self->priv->label = clutter_text_new ();
- *     clutter_actor_set_parent (self->priv->label,
- *                               CLUTTER_ACTOR (self));
- *
- *     clutter_actor_pop_internal (CLUTTER_ACTOR (self));
- *
- *     /&ast; calling clutter_actor_set_parent() now will not result in
- *      &ast; the internal flag being set on a child of MyActor
- *      &ast;/
- *   }
- * ]|
- *
- * This function will be used by Clutter to toggle an "internal child"
- * flag whenever clutter_actor_set_parent() is called; internal children
- * are handled differently by Clutter, specifically when destroying their
- * parent.
- *
- * Call clutter_actor_pop_internal() when you finished adding internal
- * children.
- *
- * Nested calls to clutter_actor_push_internal() are allowed, but each
- * one must by followed by a clutter_actor_pop_internal() call.
- *
- * Since: 1.2
- *
- * Deprecated: 1.10: All children of an actor are accessible through
- *   the #ClutterActor API, and #ClutterActor implements the
- *   #ClutterContainer interface, so this function is only useful
- *   for legacy containers overriding the default implementation.
- */
-void
-clutter_actor_push_internal (ClutterActor *self)
-{
-  g_return_if_fail (CLUTTER_IS_ACTOR (self));
-
-  self->priv->internal_child += 1;
-}
-
-/**
- * clutter_actor_pop_internal:
- * @self: a #ClutterActor
- *
- * Disables the effects of clutter_actor_push_internal().
- *
- * Since: 1.2
- *
- * Deprecated: 1.10: All children of an actor are accessible through
- *   the #ClutterActor API. This function is only useful for legacy
- *   containers overriding the default implementation of the
- *   #ClutterContainer interface.
- */
-void
-clutter_actor_pop_internal (ClutterActor *self)
-{
-  ClutterActorPrivate *priv;
-
-  g_return_if_fail (CLUTTER_IS_ACTOR (self));
-
-  priv = self->priv;
-
-  if (priv->internal_child == 0)
-    {
-      g_warning ("Mismatched %s: you need to call "
-                 "clutter_actor_push_composite() at least once before "
-                 "calling this function", G_STRFUNC);
-      return;
-    }
-
-  priv->internal_child -= 1;
 }
 
 /**

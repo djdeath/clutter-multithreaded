@@ -184,7 +184,7 @@ test_content_main (int argc, char *argv[])
   clutter_actor_set_margin_bottom (grid, 12);
   clutter_actor_set_margin_left (grid, 12);
   clutter_actor_set_layout_manager (grid, clutter_flow_layout_new (CLUTTER_FLOW_HORIZONTAL));
-  clutter_actor_add_constraint (grid, clutter_bind_constraint_new (stage, CLUTTER_BIND_SIZE, 0.0));
+  /* clutter_actor_add_constraint (grid, clutter_bind_constraint_new (stage, CLUTTER_BIND_SIZE, 0.0)); */
   clutter_actor_add_child (stage, grid);
 
   content = color_content_new (g_random_double_range (0.0, 1.0),

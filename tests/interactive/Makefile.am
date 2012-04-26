@@ -17,7 +17,6 @@ UNIT_TESTS = \
 	test-animator.c \
 	test-state.c \
 	test-state-animator.c \
-	test-fbo.c \
 	test-multistage.c \
 	test-cogl-primitives.c \
 	test-cogl-tex-tile.c \
@@ -32,7 +31,6 @@ UNIT_TESTS = \
 	test-paint-wrapper.c \
 	test-texture-quality.c \
 	test-layout.c \
-        test-animation.c \
         test-easing.c \
         test-binding-pool.c \
         test-text.c \
@@ -40,20 +38,12 @@ UNIT_TESTS = \
 	test-cairo-clock.c \
 	test-cairo-flowers.c \
 	test-cogl-vertex-buffer.c \
-	test-bin-layout.c \
 	test-flow-layout.c \
 	test-box-layout.c \
 	test-stage-sizing.c \
-	test-drag.c \
-	test-constraints.c \
-	test-scrolling.c \
-	test-swipe-action.c \
 	test-cogl-point-sprites.c \
 	test-table-layout.c \
-	test-path-constraint.c \
-	test-snap-constraint.c \
 	test-state-script.c \
-	test-drop.c \
 	test-devices.c \
 	test-actor.c \
 	test-transitions.c \

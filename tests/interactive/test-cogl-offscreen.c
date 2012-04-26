@@ -319,9 +319,9 @@ test_cogl_offscreen_main (int argc, char *argv[])
 
   /* Cogl Box */
   coglbox = test_coglbox_new ();
-  clutter_container_add_actor (CLUTTER_CONTAINER (stage), coglbox);
+  clutter_actor_add_child (stage, coglbox);
 
-  clutter_actor_show_all (stage);
+  clutter_actor_show (stage);
 
   clutter_main ();
 

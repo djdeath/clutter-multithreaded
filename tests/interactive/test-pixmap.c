@@ -44,10 +44,12 @@ static GOptionEntry g_options[] =
 static void
 toggle_texture_quality (ClutterActor *actor)
 {
-  if (CLUTTER_IS_CONTAINER (actor))
-    clutter_container_foreach (CLUTTER_CONTAINER (actor),
-                               (ClutterCallback) toggle_texture_quality,
-                               NULL);
+  ClutterActor *child;
+  ClutterActorIter iter;
+
+  clutter_actor_iter_init (&iter, actor);
+  while (clutter_actor_iter_next (&iter, &child))
+    toggle_texture_quality (child);
 
   if (CLUTTER_IS_TEXTURE (actor))
     {
@@ -249,25 +251,25 @@ test_pixmap_main (int argc, char **argv)
                     NULL);
 
   alpha = clutter_alpha_new_full (timeline, CLUTTER_LINEAR);
-  depth_behavior = clutter_behaviour_depth_new (alpha, -2500, 400);
+  /* depth_behavior = clutter_behaviour_depth_new (alpha, -2500, 400); */
 
   if (!disable_x11)
     {
-      group = clutter_group_new ();
-      clutter_container_add_actor (CLUTTER_CONTAINER (stage), group);
+      group = clutter_actor_new ();
+      clutter_actor_add_child (stage, group);
       label = clutter_text_new_with_text ("fixed",
                                           "ClutterX11Texture (Window)");
-      clutter_container_add_actor (CLUTTER_CONTAINER (group), label);
+      clutter_actor_add_child (group, label);
       tex = clutter_x11_texture_pixmap_new_with_window (win_remote);
-      clutter_container_add_actor (CLUTTER_CONTAINER (group), tex);
+      clutter_actor_add_child (group, tex);
       clutter_actor_set_position (tex, 0, 20);
       clutter_x11_texture_pixmap_set_automatic (CLUTTER_X11_TEXTURE_PIXMAP (tex),
                                                 TRUE);
       clutter_texture_set_filter_quality (CLUTTER_TEXTURE (tex),
                                           CLUTTER_TEXTURE_QUALITY_HIGH);
       clutter_actor_set_position (group, 0, 0);
-      if (!disable_animation)
-        clutter_behaviour_apply (depth_behavior, group);
+      /* if (!disable_animation) */
+      /*   clutter_behaviour_apply (depth_behavior, group); */
     }
 
   if (group)
@@ -285,22 +287,22 @@ test_pixmap_main (int argc, char **argv)
     XDrawLine (xdpy, win_remote, gc, 0+i*20, 0, 10+i*20+i, 200);
 
 
-  group = clutter_group_new ();
-  clutter_container_add_actor (CLUTTER_CONTAINER (stage), group);
+  group = clutter_actor_new ();
+  clutter_actor_add_child (stage, group);
   label = clutter_text_new_with_text ("fixed", "ClutterX11Texture (Pixmap)");
-  clutter_container_add_actor (CLUTTER_CONTAINER (group), label);
+  clutter_actor_add_child (group, label);
   tex = clutter_x11_texture_pixmap_new_with_pixmap (pixmap);
   clutter_x11_texture_pixmap_set_automatic (CLUTTER_X11_TEXTURE_PIXMAP (tex),
                                             TRUE);
-  clutter_container_add_actor (CLUTTER_CONTAINER (group), tex);
+  clutter_actor_add_child (group, tex);
   clutter_actor_set_position (tex, 0, 20);
   clutter_texture_set_filter_quality (CLUTTER_TEXTURE (tex),
 				      CLUTTER_TEXTURE_QUALITY_HIGH);
   /* oddly, the actor's size is 0 until it is realized, even though
      pixmap-height is set */
   clutter_actor_set_position (group, 0, row_height);
-  if (!disable_animation)
-    clutter_behaviour_apply (depth_behavior, group);
+  /* if (!disable_animation) */
+  /*   clutter_behaviour_apply (depth_behavior, group); */
 
 
   g_signal_connect (stage, "key-release-event",

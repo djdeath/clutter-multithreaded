@@ -113,7 +113,7 @@ test_canvas_main (int argc, char *argv[])
   g_object_unref (canvas);
 
   /* bind the size of the actor to that of the stage */
-  clutter_actor_add_constraint (actor, clutter_bind_constraint_new (stage, CLUTTER_BIND_SIZE, 0));
+  /* clutter_actor_add_constraint (actor, clutter_bind_constraint_new (stage, CLUTTER_BIND_SIZE, 0)); */
 
   /* quit on destroy */
   g_signal_connect (stage, "destroy", G_CALLBACK (clutter_main_quit), NULL);

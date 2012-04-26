@@ -28,8 +28,8 @@ typedef struct SuperOH
   gint stage_height;
   gfloat radius;
 
-  ClutterBehaviour *scaler_1;
-  ClutterBehaviour *scaler_2;
+  /* ClutterBehaviour *scaler_1; */
+  /* ClutterBehaviour *scaler_2; */
   ClutterTimeline *timeline;
 
   guint frame_id;
@@ -257,10 +257,10 @@ test_paint_wrapper_main (int argc, char *argv[])
   /* Set up some behaviours to handle scaling  */
   alpha = clutter_alpha_new_with_func (oh->timeline, my_sine_wave, NULL, NULL);
 
-  oh->scaler_1 = clutter_behaviour_scale_new (alpha, 0.5, 0.5, 1.0, 1.0);
-  oh->scaler_2 = clutter_behaviour_scale_new (alpha, 1.0, 1.0, 0.5, 0.5);
+  /* oh->scaler_1 = clutter_behaviour_scale_new (alpha, 0.5, 0.5, 1.0, 1.0); */
+  /* oh->scaler_2 = clutter_behaviour_scale_new (alpha, 1.0, 1.0, 0.5, 0.5); */
 
-  real_hand = clutter_texture_new_from_file (TESTS_DATADIR 
+  real_hand = clutter_texture_new_from_file (TESTS_DATADIR
                                              G_DIR_SEPARATOR_S
                                              "redhand.png",
                                              &error);
@@ -271,7 +271,7 @@ test_paint_wrapper_main (int argc, char *argv[])
     }
 
   /* create a new group to hold multiple actors in a group */
-  oh->group = clutter_group_new();
+  oh->group = clutter_actor_new();
 
   oh->hand = g_new (ClutterActor*, n_hands);
 
@@ -327,19 +327,18 @@ test_paint_wrapper_main (int argc, char *argv[])
                               oh);
 
       /* Add to our group group */
-      clutter_container_add_actor (CLUTTER_CONTAINER (oh->group), oh->hand[i]);
+      clutter_actor_add_child (oh->group, oh->hand[i]);
 
-      if (i % 2)
-	clutter_behaviour_apply (oh->scaler_1, oh->hand[i]);
-      else
-	clutter_behaviour_apply (oh->scaler_2, oh->hand[i]);
+      /* if (i % 2) */
+      /*   clutter_behaviour_apply (oh->scaler_1, oh->hand[i]); */
+      /* else */
+      /*   clutter_behaviour_apply (oh->scaler_2, oh->hand[i]); */
     }
 
   oh->paint_guards = g_malloc0 (sizeof (gboolean) * n_hands);
 
   /* Add the group to the stage */
-  clutter_container_add_actor (CLUTTER_CONTAINER (stage),
-                               CLUTTER_ACTOR (oh->group));
+  clutter_actor_add_child (stage, CLUTTER_ACTOR (oh->group));
 
   /* Show everying ( and map window ) */
   clutter_actor_show (stage);
@@ -353,8 +352,8 @@ test_paint_wrapper_main (int argc, char *argv[])
 
   clutter_main ();
 
-  g_object_unref (oh->scaler_1);
-  g_object_unref (oh->scaler_2);
+  /* g_object_unref (oh->scaler_1); */
+  /* g_object_unref (oh->scaler_2); */
   g_object_unref (oh->timeline);
   g_free (oh->paint_guards);
   g_free (oh->hand);

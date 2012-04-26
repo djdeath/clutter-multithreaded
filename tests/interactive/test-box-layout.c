@@ -71,9 +71,9 @@ enter_event (ClutterActor *actor,
              ClutterEvent *event,
              gpointer data)
 {
-  clutter_rectangle_set_border_width (CLUTTER_RECTANGLE (actor), 2);
-  clutter_rectangle_set_border_color (CLUTTER_RECTANGLE (actor),
-                                      CLUTTER_COLOR_Black);
+  /* clutter_rectangle_set_border_width (CLUTTER_RECTANGLE (actor), 2); */
+  /* clutter_rectangle_set_border_color (CLUTTER_RECTANGLE (actor), */
+  /*                                     CLUTTER_COLOR_Black); */
 
   hover_actor = actor;
 }
@@ -83,7 +83,7 @@ leave_event (ClutterActor *actor,
              ClutterEvent *event,
              gpointer data)
 {
-  clutter_rectangle_set_border_width (CLUTTER_RECTANGLE (actor), 0);
+  /* clutter_rectangle_set_border_width (CLUTTER_RECTANGLE (actor), 0); */
 
   hover_actor = NULL;
 }
@@ -140,7 +140,8 @@ add_actor (ClutterBoxLayout *layout,
                           0.5);
   color.alpha = 255;
 
-  rect = clutter_rectangle_new_with_color (&color);
+  rect = clutter_actor_new ();
+  clutter_actor_set_background_color (rect, &color);
   clutter_actor_set_size (rect, 32, 64);
   clutter_box_layout_pack (layout, rect, expand,
                            FALSE, /* x-fill */
@@ -250,8 +251,9 @@ test_box_layout_main (int argc, char *argv[])
 
   layout = clutter_box_layout_new ();
 
-  box = clutter_box_new (layout);
-  clutter_container_add_actor (CLUTTER_CONTAINER (stage), box);
+  box = clutter_actor_new ();
+  clutter_actor_set_layout_manager (box, layout);
+  clutter_actor_add_child (stage, box);
 
   for (i = 0; i < 5; i++)
     add_actor (CLUTTER_BOX_LAYOUT (layout), last_index++);
@@ -264,7 +266,7 @@ test_box_layout_main (int argc, char *argv[])
                     NULL);
 
   label = clutter_text_new_with_text ("Sans 12px", INSTRUCTIONS);
-  clutter_container_add_actor (CLUTTER_CONTAINER (stage), label);
+  clutter_actor_add_child (stage, label);
   clutter_actor_set_y (label,
                        480 - clutter_actor_get_height (label) - 8);
 

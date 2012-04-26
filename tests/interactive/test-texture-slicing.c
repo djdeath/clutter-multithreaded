@@ -27,16 +27,16 @@ make_rgba_data (int width, int height, int bpp, int has_alpha, int *rowstride_p)
       for (x = 0; x < width; x++)
 	{
 	  guchar *p;
-	  
+
 	  p = pixels + y * rowstride + x * bpp;
-	  
+
 	  p[0] = p[1] = p[2] = 0; p[3] = 0xff;
-	  
+
 	  if (x && y && y % CHECK_SIZE && x % CHECK_SIZE)
 	    {
 	      if (x % CHECK_SIZE == 1)
 		{
-		  if (++i > 3) 
+		  if (++i > 3)
 		    i = 0;
 		}
 	      p[i] = 0xff;
@@ -67,7 +67,7 @@ test_textures_main (int argc, char *argv[])
     return 1;
 
   stage = clutter_stage_new ();
-  clutter_actor_show_all (CLUTTER_ACTOR (stage));
+  clutter_actor_show (CLUTTER_ACTOR (stage));
   g_signal_connect (stage, "destroy", G_CALLBACK (exit_on_destroy), NULL);
 
   SPIN();
@@ -99,20 +99,20 @@ test_textures_main (int argc, char *argv[])
                                                 0, NULL))
           g_error("texture creation failed");
         g_free(pixels);
-	
+
 	printf("uploaded to texture...\n");
-	
-	clutter_container_add (CLUTTER_CONTAINER (stage), texture, NULL);
+
+	clutter_actor_add_child (stage, texture);
 	clutter_actor_set_size (texture, 400, 400);
 	clutter_actor_show (texture);
 
 	/* Hide & show to unreaise then realise the texture */
 	clutter_actor_hide (texture);
-	clutter_actor_show (texture);	
+	clutter_actor_show (texture);
 
 	SPIN();
 
-        clutter_container_remove (CLUTTER_CONTAINER (stage), texture, NULL);
+        clutter_actor_remove_child (stage, texture);
     }
 
   return EXIT_SUCCESS;

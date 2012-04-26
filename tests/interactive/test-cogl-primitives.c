@@ -111,7 +111,7 @@ test_cogl_primitives_main (int argc, char *argv[])
     return 1;
 
   tl = clutter_timeline_new (G_N_ELEMENTS (paint_func) * 1000);
-  clutter_timeline_set_loop (tl, TRUE);
+  clutter_timeline_set_repeat_count (tl, -1);
   clutter_timeline_start (tl);
 
   stage = clutter_stage_new ();
@@ -119,8 +119,8 @@ test_cogl_primitives_main (int argc, char *argv[])
   clutter_stage_set_title (CLUTTER_STAGE (stage), "Cogl Path Primitives");
   g_signal_connect (stage, "destroy", G_CALLBACK (clutter_main_quit), NULL);
 
-  coglbox = clutter_group_new ();
-  clutter_container_add_actor (CLUTTER_CONTAINER (stage), coglbox);
+  coglbox = clutter_actor_new ();
+  clutter_actor_add_child (stage, coglbox);
   g_signal_connect (coglbox, "paint", G_CALLBACK (paint_cb), tl);
   /* Redraw every frame of the timeline */
   g_signal_connect_swapped (tl, "new-frame",

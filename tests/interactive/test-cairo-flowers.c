@@ -25,12 +25,10 @@ Flower;
 
 static ClutterActor *stage = NULL;
 
-static ClutterActor *
-make_flower_actor (void)
+static gboolean
+draw_flower (ClutterActor *texture, cairo_t *cr, gpointer data)
 {
-  /* No science here, just a hack from toying */
   gint i, j;
-
   double colors[] = {
     0.71, 0.81, 0.83,
     1.0,  0.78, 0.57,
@@ -44,26 +42,17 @@ make_flower_actor (void)
     1.0, 0.79, 0.58,
 
   };
-
   gint size;
   gint petal_size;
   gint n_groups;    /* Num groups of petals 1-3 */
   gint n_petals;    /* num of petals 4 - 8  */
   gint pm1, pm2;
-
   gint idx, last_idx = -1;
 
-  ClutterActor *ctex;
-  cairo_t      *cr;
-
-  petal_size = PETAL_MIN + rand() % PETAL_VAR;
-  size = petal_size * 8;
+  size = clutter_actor_get_width (texture);
 
   n_groups = rand() % 3 + 1;
 
-  ctex = clutter_cairo_texture_new (size, size);
-
-  cr = clutter_cairo_texture_create (CLUTTER_CAIRO_TEXTURE (ctex));
 
   cairo_set_tolerance (cr, 0.1);
 
@@ -132,8 +121,23 @@ make_flower_actor (void)
 
   cairo_arc(cr, 0, 0, petal_size, 0, M_PI * 2);
   cairo_fill(cr);
+}
 
-  cairo_destroy(cr);
+static ClutterActor *
+make_flower_actor (void)
+{
+  /* No science here, just a hack from toying */
+  ClutterActor *ctex;
+  gint size;
+  gint petal_size;
+
+  petal_size = PETAL_MIN + rand() % PETAL_VAR;
+  size = petal_size * 8;
+
+  ctex = clutter_cairo_texture_new (size, size);
+  g_signal_connect (ctex, "draw",
+                    G_CALLBACK (draw_flower),
+                    NULL);
 
   return ctex;
 }
@@ -206,8 +210,7 @@ test_cairo_flowers_main (int argc, char **argv)
       flowers[i]->rv   = rand() % 5 + 1;
       flowers[i]->v    = rand() % 10 + 2;
 
-      clutter_container_add_actor (CLUTTER_CONTAINER (stage),
-                                   flowers[i]->ctex);
+      clutter_actor_add_child (stage, flowers[i]->ctex);
       clutter_actor_set_position (flowers[i]->ctex,
 				  flowers[i]->x, flowers[i]->y);
     }

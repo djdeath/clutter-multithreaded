@@ -96,7 +96,7 @@ test_animation_main (int argc, char *argv[])
   g_signal_connect (stage, "destroy", G_CALLBACK (clutter_main_quit), NULL);
 
   rect = clutter_rectangle_new_with_color (&rect_color);
-  clutter_container_add_actor (CLUTTER_CONTAINER (stage), rect);
+  clutter_actor_add_child (stage, rect);
   clutter_actor_set_size (rect, 50, 50);
   clutter_actor_set_anchor_point (rect, 25, 25);
   clutter_actor_set_position (rect,

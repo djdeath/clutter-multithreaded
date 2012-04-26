@@ -26,27 +26,6 @@ static const struct {
 static int n_gravities = G_N_ELEMENTS (gravities);
 static int cur_gravity = 0;
 
-static void
-on_clicked (ClutterClickAction *action,
-            ClutterActor       *actor,
-            ClutterText        *label)
-{
-  gchar *str;
-
-  clutter_actor_save_easing_state (actor);
-  clutter_actor_set_content_gravity (actor, gravities[cur_gravity].gravity);
-  clutter_actor_restore_easing_state (actor);
-
-  str = g_strconcat ("Content gravity: ", gravities[cur_gravity].name, NULL);
-  clutter_text_set_text (label, str);
-  g_free (str);
-
-  cur_gravity += 1;
-
-  if (cur_gravity >= n_gravities)
-    cur_gravity = 0;
-}
-
 G_MODULE_EXPORT const char *
 test_image_box_describe (void)
 {
@@ -58,7 +37,6 @@ test_image_box_main (int argc, char *argv[])
 {
   ClutterActor *stage, *box, *text;
   ClutterContent *image;
-  ClutterAction *action;
   GdkPixbuf *pixbuf;
   gchar *str;
 
@@ -78,7 +56,7 @@ test_image_box_main (int argc, char *argv[])
   clutter_actor_set_margin_right (box, 12);
   clutter_actor_set_margin_bottom (box, 12);
   clutter_actor_set_margin_left (box, 12);
-  clutter_actor_add_constraint (box, clutter_bind_constraint_new (stage, CLUTTER_BIND_SIZE, 0.0));
+  /* clutter_actor_add_constraint (box, clutter_bind_constraint_new (stage, CLUTTER_BIND_SIZE, 0.0)); */
   clutter_actor_add_child (stage, box);
 
   pixbuf = gdk_pixbuf_new_from_file (TESTS_DATADIR G_DIR_SEPARATOR_S "redhand.png", NULL);
@@ -107,15 +85,10 @@ test_image_box_main (int argc, char *argv[])
 
   text = clutter_text_new ();
   clutter_text_set_text (CLUTTER_TEXT (text), str);
-  clutter_actor_add_constraint (text, clutter_align_constraint_new (stage, CLUTTER_ALIGN_BOTH, 0.5));
+  /* clutter_actor_add_constraint (text, clutter_align_constraint_new (stage, CLUTTER_ALIGN_BOTH, 0.5)); */
   clutter_actor_add_child (stage, text);
 
   g_free (str);
-
-  action = clutter_click_action_new ();
-  g_signal_connect (action, "clicked", G_CALLBACK (on_clicked), text);
-  clutter_actor_set_reactive (box, TRUE);
-  clutter_actor_add_action (box, action);
 
   clutter_main ();
 

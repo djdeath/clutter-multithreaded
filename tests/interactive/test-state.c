@@ -125,7 +125,7 @@ test_state_main (gint    argc,
 
       actor = new_rect (255 * (1.0 * col / COLS), 50,
                         255 * (1.0 * row / ROWS), 255);
-      clutter_container_add_actor (CLUTTER_CONTAINER (stage), actor);
+      clutter_actor_add_child (stage, actor);
       clutter_actor_set_position (actor, 320.0, 240.0);
       clutter_actor_set_reactive (actor, TRUE);
       clutter_actor_add_effect_with_name (actor, "fade",
@@ -134,7 +134,7 @@ test_state_main (gint    argc,
 
       clutter_state_set (layout_state, NULL, "active",
             actor, "delayed::x", CLUTTER_LINEAR,
-                                         ACTOR_WIDTH * 1.0 * ((TOTAL-1-i) % COLS), 
+                                         ACTOR_WIDTH * 1.0 * ((TOTAL-1-i) % COLS),
                                         ((row*1.0/ROWS))/2, (1.0-(row*1.0/ROWS))/2,
             actor, "delayed::y", CLUTTER_LINEAR,
                                          ACTOR_HEIGHT * 1.0 * ((TOTAL-1-i) / COLS),

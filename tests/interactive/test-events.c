@@ -107,7 +107,7 @@ static void
 key_focus_in_cb (ClutterActor *actor,
 		 gpointer      data)
 {
-  ClutterActor *focus_box = CLUTTER_ACTOR (data);  
+  ClutterActor *focus_box = CLUTTER_ACTOR (data);
 
   if (CLUTTER_IS_STAGE (actor))
     clutter_actor_hide (focus_box);
@@ -171,7 +171,7 @@ input_cb (ClutterActor *actor,
 	  ClutterEvent *event,
 	  gpointer      data)
 {
-  ClutterActor *stage = clutter_actor_get_stage (actor); 
+  ClutterActor *stage = clutter_actor_get_stage (actor);
   ClutterActor *source_actor = clutter_event_get_source (event);
   gchar keybuf[128];
 
@@ -254,7 +254,7 @@ input_cb (ClutterActor *actor,
 
   if (source_actor == actor)
     g_print (" *source*");
-  
+
   g_print ("\n");
 
   return FALSE;
@@ -273,25 +273,27 @@ test_events_main (int argc, char *argv[])
   clutter_actor_set_name (stage, "Stage");
   g_signal_connect (stage, "destroy", G_CALLBACK (clutter_main_quit), NULL);
   g_signal_connect (stage, "event", G_CALLBACK (input_cb), "stage");
-  g_signal_connect (stage, "fullscreen", 
+  g_signal_connect (stage, "fullscreen",
 		    G_CALLBACK (stage_state_cb), "fullscreen");
-  g_signal_connect (stage, "unfullscreen", 
+  g_signal_connect (stage, "unfullscreen",
 		    G_CALLBACK (stage_state_cb), "unfullscreen");
-  g_signal_connect (stage, "activate", 
+  g_signal_connect (stage, "activate",
 		    G_CALLBACK (stage_state_cb), "activate");
-  g_signal_connect (stage, "deactivate", 
+  g_signal_connect (stage, "deactivate",
 		    G_CALLBACK (stage_state_cb), "deactivate");
 
-  focus_box = clutter_rectangle_new_with_color (CLUTTER_COLOR_Black);
+  focus_box = clutter_actor_new ();
+  clutter_actor_set_background_color (focus_box, CLUTTER_COLOR_Black);
   clutter_actor_set_name (focus_box, "Focus Box");
-  clutter_container_add (CLUTTER_CONTAINER(stage), focus_box, NULL);
+  clutter_actor_add_child (stage, focus_box);
 
-  actor = clutter_rectangle_new_with_color (CLUTTER_COLOR_Red);
+  actor = clutter_actor_new ();
+  clutter_actor_set_background_color (actor, CLUTTER_COLOR_Red);
   clutter_actor_set_name (actor, "Red Box");
   clutter_actor_set_size (actor, 100, 100);
   clutter_actor_set_position (actor, 100, 100);
   clutter_actor_set_reactive (actor, TRUE);
-  clutter_container_add (CLUTTER_CONTAINER (stage), actor, NULL);
+  clutter_actor_add_child (stage, actor);
   g_signal_connect (actor, "event", G_CALLBACK (input_cb), "red box");
   g_signal_connect (actor, "key-focus-in", G_CALLBACK (key_focus_in_cb),
 		    focus_box);
@@ -301,23 +303,25 @@ test_events_main (int argc, char *argv[])
 
   clutter_stage_set_key_focus (CLUTTER_STAGE (stage), actor);
 
-  actor = clutter_rectangle_new_with_color (CLUTTER_COLOR_Green);
+  actor = clutter_actor_new ();
+  clutter_actor_set_background_color (actor, CLUTTER_COLOR_Green);
   clutter_actor_set_name (actor, "Green Box");
   clutter_actor_set_size (actor, 100, 100);
   clutter_actor_set_position (actor, 250, 100);
   clutter_actor_set_reactive (actor, TRUE);
-  clutter_container_add (CLUTTER_CONTAINER (stage), actor, NULL);
+  clutter_actor_add_child (stage, actor);
   g_signal_connect (actor, "event", G_CALLBACK (input_cb), "green box");
   g_signal_connect (actor, "key-focus-in", G_CALLBACK (key_focus_in_cb),
 		    focus_box);
   g_signal_connect (actor, "captured-event", G_CALLBACK (capture_cb), NULL);
 
-  actor = clutter_rectangle_new_with_color (CLUTTER_COLOR_Blue);
+  actor = clutter_actor_new ();
+  clutter_actor_set_background_color (actor, CLUTTER_COLOR_Blue);
   clutter_actor_set_name (actor, "Blue Box");
   clutter_actor_set_size (actor, 100, 100);
   clutter_actor_set_position (actor, 400, 100);
   clutter_actor_set_reactive (actor, TRUE);
-  clutter_container_add (CLUTTER_CONTAINER(stage), actor, NULL);
+  clutter_actor_add_child (stage, actor);
   g_signal_connect (actor, "event", G_CALLBACK (input_cb), "blue box");
   g_signal_connect (actor, "key-focus-in", G_CALLBACK (key_focus_in_cb),
 		    focus_box);
@@ -326,11 +330,12 @@ test_events_main (int argc, char *argv[])
                     G_CALLBACK (blue_button_cb), NULL);
 
   /* non reactive */
-  actor = clutter_rectangle_new_with_color (CLUTTER_COLOR_Black);
+  actor = clutter_actor_new ();
+  clutter_actor_set_background_color (actor, CLUTTER_COLOR_Black);
   clutter_actor_set_name (actor, "Black Box");
   clutter_actor_set_size (actor, 400, 50);
   clutter_actor_set_position (actor, 100, 250);
-  clutter_container_add (CLUTTER_CONTAINER(stage), actor, NULL);
+  clutter_actor_add_child (stage, actor);
   g_signal_connect (actor, "event", G_CALLBACK (input_cb), "blue box");
   g_signal_connect (actor, "key-focus-in", G_CALLBACK (key_focus_in_cb),
 		    focus_box);
@@ -338,7 +343,8 @@ test_events_main (int argc, char *argv[])
 		    focus_box);
 
   /* non reactive group, with reactive child */
-  actor = clutter_rectangle_new_with_color (CLUTTER_COLOR_Yellow);
+  actor = clutter_actor_new ();
+  clutter_actor_set_background_color (actor, CLUTTER_COLOR_Yellow);
   clutter_actor_set_name (actor, "Yellow Box");
   clutter_actor_set_size (actor, 100, 100);
   clutter_actor_set_reactive (actor, TRUE);
@@ -346,24 +352,25 @@ test_events_main (int argc, char *argv[])
   g_signal_connect (actor, "event", G_CALLBACK (input_cb), "yellow box");
 
   /* note group not reactive */
-  group = clutter_group_new ();
-  clutter_container_add (CLUTTER_CONTAINER (group), actor, NULL);
-  clutter_container_add (CLUTTER_CONTAINER (stage), group, NULL);
+  group = clutter_actor_new ();
+  clutter_actor_add_child (group, actor);
+  clutter_actor_add_child (stage, group);
   clutter_actor_set_position (group, 100, 350);
-  clutter_actor_show_all (group);
+  clutter_actor_show (group);
 
   /* border actor */
-  actor = clutter_rectangle_new_with_color (CLUTTER_COLOR_Magenta);
+  actor = clutter_actor_new ();
+  clutter_actor_set_background_color (actor, CLUTTER_COLOR_Magenta);
   clutter_actor_set_name (actor, "Border Box");
   clutter_actor_set_size (actor, 100, 100);
   clutter_actor_set_position (actor,
                               (clutter_actor_get_width (stage) - 100) / 2,
                               clutter_actor_get_height (stage) - 100);
   clutter_actor_set_reactive (actor, TRUE);
-  clutter_container_add_actor (CLUTTER_CONTAINER (stage), actor);
+  clutter_actor_add_child (stage, actor);
   g_signal_connect (actor, "event", G_CALLBACK (input_cb), NULL);
 
-  clutter_actor_show_all (CLUTTER_ACTOR (stage));
+  clutter_actor_show (stage);
 
   clutter_main();
 

@@ -53,7 +53,8 @@ make_box (void)
   ClutterActor *box;
   static const ClutterColor blue = { 0x00, 0x00, 0xff, 0xff };
 
-  box = clutter_rectangle_new_with_color (&blue);
+  box = clutter_actor_new ();
+  clutter_actor_set_background_color (box, &blue);
   clutter_actor_set_size (box, DOT_SIZE + 2, DOT_SIZE + 2);
   clutter_actor_hide (box);
 
@@ -149,8 +150,9 @@ test_stage_read_pixels_main (int argc, char **argv)
 			      clutter_actor_get_height (data.stage)
 			      - clutter_actor_get_height (data.tex));
 
-  clutter_container_add (CLUTTER_CONTAINER (data.stage),
-			 make_label (), data.tex, data.box, NULL);
+  clutter_actor_add_child (data.stage, make_label ());
+  clutter_actor_add_child (data.stage, data.tex);
+  clutter_actor_add_child (data.stage, data.box);
 
   g_signal_connect (data.stage, "motion-event", G_CALLBACK (on_motion), &data);
 

@@ -57,8 +57,6 @@ test_texture_quality_main (int argc, char *argv[])
 
   stage = clutter_stage_new ();
   clutter_actor_set_background_color (stage, &stage_color);
-  clutter_stage_set_use_fog (CLUTTER_STAGE (stage), TRUE);
-  clutter_stage_set_fog (CLUTTER_STAGE (stage), &stage_fog);
   g_signal_connect (stage,
                     "destroy", G_CALLBACK (clutter_main_quit),
                     NULL);
@@ -82,10 +80,10 @@ test_texture_quality_main (int argc, char *argv[])
   g_free (file);
 
   /* center the image */
-  clutter_actor_set_position (image, 
+  clutter_actor_set_position (image,
     (clutter_actor_get_width (stage) - clutter_actor_get_width (image))/2,
     (clutter_actor_get_height (stage) - clutter_actor_get_height (image))/2);
-  clutter_container_add (CLUTTER_CONTAINER (stage), image, NULL);
+  clutter_actor_add_child (stage, image);
 
   timeline = clutter_timeline_new (5000);
   g_signal_connect (timeline,
@@ -93,8 +91,8 @@ test_texture_quality_main (int argc, char *argv[])
                     NULL);
 
   alpha = clutter_alpha_new_full (timeline, CLUTTER_LINEAR);
-  depth_behavior = clutter_behaviour_depth_new (alpha, -2500, 400);
-  clutter_behaviour_apply (depth_behavior, image);
+  /* depth_behavior = clutter_behaviour_depth_new (alpha, -2500, 400); */
+  /* clutter_behaviour_apply (depth_behavior, image); */
 
   clutter_actor_show (stage);
   clutter_timeline_start (timeline);

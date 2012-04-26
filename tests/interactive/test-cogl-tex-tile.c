@@ -197,15 +197,15 @@ test_cogl_tex_tile_main (int argc, char *argv[])
 
   /* Cogl Box */
   coglbox = test_coglbox_new ();
-  clutter_container_add_actor (CLUTTER_CONTAINER (stage), coglbox);
+  clutter_actor_add_child (stage, coglbox);
 
   /* Timeline for animation */
   timeline = clutter_timeline_new (6000); /* 6 second duration */
-  clutter_timeline_set_loop (timeline, TRUE);
+  clutter_timeline_set_repeat_count (timeline, -1);
   g_signal_connect (timeline, "new-frame", G_CALLBACK (frame_cb), coglbox);
   clutter_timeline_start (timeline);
 
-  clutter_actor_show_all (stage);
+  clutter_actor_show (stage);
 
   clutter_main ();
 

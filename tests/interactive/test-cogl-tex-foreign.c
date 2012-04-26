@@ -8,7 +8,7 @@
  *--------------------------------------------------*/
 
 G_BEGIN_DECLS
-  
+
 #define TEST_TYPE_COGLBOX test_coglbox_get_type()
 
 #define TEST_COGLBOX(obj) \
@@ -43,7 +43,7 @@ struct _TestCoglbox
   TestCoglboxPrivate *priv;
 };
 
-struct _TestCoglboxClass 
+struct _TestCoglboxClass
 {
   ClutterActorClass parent_class;
 
@@ -99,20 +99,20 @@ test_coglbox_paint(ClutterActor *self)
 {
   TestCoglboxPrivate *priv = TEST_COGLBOX_GET_PRIVATE (self);
   gfloat texcoords[4] = { 0.3f, 0.3f, 0.7f, 0.7f };
-  
+
   priv = TEST_COGLBOX_GET_PRIVATE (self);
-  
+
   cogl_set_source_color4ub (0x66, 0x66, 0xdd, 0xff);
   cogl_rectangle (0,0,400,400);
-  
+
   cogl_push_matrix ();
-  
+
   cogl_translate (100,100,0);
   cogl_set_source_texture (priv->cogl_handle);
   cogl_rectangle_with_texture_coords (0, 0, 200, 200,
                                       texcoords[0], texcoords[1],
                                       texcoords[2], texcoords[3]);
-  
+
   cogl_pop_matrix();
 }
 
@@ -126,12 +126,12 @@ static void
 test_coglbox_dispose (GObject *object)
 {
   TestCoglboxPrivate *priv;
-  
+
   priv = TEST_COGLBOX_GET_PRIVATE (object);
-  
+
   cogl_handle_unref (priv->cogl_handle);
   priv->glDeleteTextures (1, &priv->gl_handle);
-  
+
   G_OBJECT_CLASS (test_coglbox_parent_class)->dispose (object);
 }
 
@@ -142,11 +142,11 @@ test_coglbox_init (TestCoglbox *self)
   guchar              data[12];
   GLint prev_unpack_alignment;
   GLint prev_2d_texture_binding;
-  
+
   self->priv = priv = TEST_COGLBOX_GET_PRIVATE(self);
-  
+
   /* Prepare a 2x2 pixels texture */
-  
+
   data[0] = 255; data[1]  =   0; data[2]  =   0;
   data[3] =   0; data[4]  = 255; data[5]  =   0;
   data[6] =   0; data[7]  =   0; data[8]  = 255;
@@ -170,7 +170,7 @@ test_coglbox_init (TestCoglbox *self)
 
   priv->glGenTextures (1, &priv->gl_handle);
   priv->glBindTexture (GL_TEXTURE_2D, priv->gl_handle);
-  
+
   priv->glPixelStorei (GL_UNPACK_ALIGNMENT, 1);
   priv->glTexImage2D (GL_TEXTURE_2D, 0, GL_RGB,
 		2, 2, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
@@ -178,18 +178,18 @@ test_coglbox_init (TestCoglbox *self)
   /* Now restore the original GL state as Cogl had left it */
   priv->glPixelStorei (GL_UNPACK_ALIGNMENT, prev_unpack_alignment);
   priv->glBindTexture (GL_TEXTURE_2D, prev_2d_texture_binding);
-  
+
   priv->glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   priv->glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  
+
   /* Create texture from foreign */
-  
+
   priv->cogl_handle =
     cogl_texture_new_from_foreign (priv->gl_handle,
 				   GL_TEXTURE_2D,
 				   2, 2, 0, 0,
 				   COGL_PIXEL_FORMAT_RGB_888);
-  
+
   if (priv->cogl_handle == COGL_INVALID_HANDLE)
     {
       printf ("Failed creating texture from foreign!\n");
@@ -204,9 +204,9 @@ test_coglbox_class_init (TestCoglboxClass *klass)
   ClutterActorClass *actor_class   = CLUTTER_ACTOR_CLASS (klass);
 
   gobject_class->finalize     = test_coglbox_finalize;
-  gobject_class->dispose      = test_coglbox_dispose;  
+  gobject_class->dispose      = test_coglbox_dispose;
   actor_class->paint          = test_coglbox_paint;
-  
+
   g_type_class_add_private (gobject_class, sizeof (TestCoglboxPrivate));
 }
 
@@ -221,10 +221,10 @@ test_cogl_tex_foreign_main (int argc, char *argv[])
 {
   ClutterActor     *stage;
   ClutterActor     *coglbox;
-  
+
   if (clutter_init (&argc, &argv) != CLUTTER_INIT_SUCCESS)
     return 1;
-  
+
   /* Stage */
   stage = clutter_stage_new ();
   clutter_actor_set_size (stage, 400, 400);
@@ -233,12 +233,12 @@ test_cogl_tex_foreign_main (int argc, char *argv[])
 
   /* Cogl Box */
   coglbox = test_coglbox_new ();
-  clutter_container_add_actor (CLUTTER_CONTAINER (stage), coglbox);
-  
-  clutter_actor_show_all (stage);
-  
+  clutter_actor_add_child (stage, coglbox);
+
+  clutter_actor_show (stage);
+
   clutter_main ();
-  
+
   return 0;
 }
 

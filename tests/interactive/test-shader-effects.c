@@ -45,7 +45,8 @@ test_shader_effects_main (int argc, char *argv[])
                                        "opacity", 128,
                                        NULL);
 
-  rect = clutter_rectangle_new_with_color (CLUTTER_COLOR_DarkOrange);
+  rect = clutter_actor_new ();
+  clutter_actor_set_background_color (rect, CLUTTER_COLOR_DarkOrange);
   clutter_actor_add_effect_with_name (rect, "blur", clutter_blur_effect_new ());
   clutter_actor_set_position (rect, 415, 215);
   clutter_actor_set_size (rect, 150, 150);
@@ -68,12 +69,14 @@ test_shader_effects_main (int argc, char *argv[])
                                        "fixed::anchor-y", 125.0,
                                        NULL);
 
-  clutter_container_add (CLUTTER_CONTAINER (stage), rect, hand, label, NULL);
-  
+  clutter_actor_add_child (stage, rect);
+  clutter_actor_add_child (stage, hand);
+  clutter_actor_add_child (stage, label);
+
   /* start the timeline and thus the animations */
   clutter_timeline_start (timeline);
 
-  clutter_actor_show_all (stage);
+  clutter_actor_show (stage);
 
   clutter_main();
 

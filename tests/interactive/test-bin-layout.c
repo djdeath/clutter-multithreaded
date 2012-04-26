@@ -177,7 +177,7 @@ test_bin_layout_main (int argc, char *argv[])
                                    CLUTTER_BIN_ALIGNMENT_CENTER);
 
   box = clutter_box_new (layout);
-  clutter_container_add_actor (CLUTTER_CONTAINER (stage), box);
+  clutter_actor_add_child (stage, box);
   clutter_actor_set_anchor_point_from_gravity (box, CLUTTER_GRAVITY_CENTER);
   clutter_actor_set_position (box, 320, 240);
   clutter_actor_set_reactive (box, TRUE);
@@ -235,7 +235,7 @@ test_bin_layout_main (int argc, char *argv[])
   rect = clutter_rectangle_new_with_color (color);
 
   /* third method: container_add() and set_alignment() */
-  clutter_container_add_actor (CLUTTER_CONTAINER (box), rect);
+  clutter_actor_add_child (box, rect);
   clutter_bin_layout_set_alignment (CLUTTER_BIN_LAYOUT (layout), rect,
                                     CLUTTER_BIN_ALIGNMENT_END,
                                     CLUTTER_BIN_ALIGNMENT_END);
@@ -259,14 +259,14 @@ test_bin_layout_main (int argc, char *argv[])
 
   rect = clutter_text_new ();
   clutter_text_set_text (CLUTTER_TEXT (rect), "A simple test");
-  clutter_container_add_actor (CLUTTER_CONTAINER (box), rect);
+  clutter_actor_add_child (box, rect);
   clutter_bin_layout_set_alignment (CLUTTER_BIN_LAYOUT (layout), rect,
                                     CLUTTER_BIN_ALIGNMENT_CENTER,
                                     CLUTTER_BIN_ALIGNMENT_START);
   clutter_actor_raise_top (rect);
   clutter_actor_set_name (rect, "text");
 
-  clutter_actor_show_all (stage);
+  clutter_actor_show (stage);
 
   clutter_main ();
 

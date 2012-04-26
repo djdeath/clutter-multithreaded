@@ -317,11 +317,12 @@ create_dummy_actor (guint width, guint height)
   ClutterActor *group, *rect;
   ClutterColor clr = { 0xff, 0xff, 0xff, 0xff};
 
-  group = clutter_group_new ();
-  rect = clutter_rectangle_new_with_color (&clr);
+  group = clutter_actor_new ();
+  rect = clutter_actor_new ();
+  clutter_actor_set_background_color (rect, &clr);
   clutter_actor_set_size (rect, width, height);
   clutter_actor_hide (rect);
-  clutter_container_add_actor (CLUTTER_CONTAINER (group), rect);
+  clutter_actor_add_child (group, rect);
   return group;
 }
 
@@ -347,20 +348,20 @@ test_cogl_vertex_buffer_main (int argc, char *argv[])
   stage = clutter_stage_new ();
 
   clutter_stage_set_title (CLUTTER_STAGE (stage), "Cogl Vertex Buffers");
-  clutter_stage_set_color (CLUTTER_STAGE (stage), CLUTTER_COLOR_Black);
+  clutter_actor_set_background_color (stage, CLUTTER_COLOR_Black);
   g_signal_connect (stage, "destroy", G_CALLBACK (stop_and_quit), &state);
   clutter_actor_get_size (stage, &stage_w, &stage_h);
 
   dummy_width = MESH_WIDTH * QUAD_WIDTH;
   dummy_height = MESH_HEIGHT * QUAD_HEIGHT;
   state.dummy = create_dummy_actor (dummy_width, dummy_height);
-  clutter_container_add_actor (CLUTTER_CONTAINER (stage), state.dummy);
+  clutter_actor_add_child (stage, state.dummy);
   clutter_actor_set_position (state.dummy,
                               (stage_w / 2.0) - (dummy_width / 2.0),
                               (stage_h / 2.0) - (dummy_height / 2.0));
 
   state.timeline = clutter_timeline_new (1000);
-  clutter_timeline_set_loop (state.timeline, TRUE);
+  clutter_timeline_set_repeat_count (state.timeline, -1);
 
   state.frame_id = g_signal_connect (state.timeline,
                                      "new-frame",
@@ -371,7 +372,7 @@ test_cogl_vertex_buffer_main (int argc, char *argv[])
 
   init_quad_mesh (&state);
 
-  clutter_actor_show_all (stage);
+  clutter_actor_show (stage);
 
   clutter_timeline_start (state.timeline);
 

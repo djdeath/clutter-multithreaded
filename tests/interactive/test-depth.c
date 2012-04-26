@@ -146,7 +146,8 @@ test_depth_main (int argc, char *argv[])
     g_error ("Unable to load redhand.png: %s", error->message);
   clutter_actor_set_position (hand, 240, 100);
 
-  rect = clutter_rectangle_new_with_color (CLUTTER_COLOR_Black);
+  rect = clutter_actor_new ();
+  clutter_actor_set_background_color (rect, CLUTTER_COLOR_Black);
   clutter_actor_set_position (rect, 340, 100);
   clutter_actor_set_size (rect, 200, 200);
   clutter_actor_set_opacity (rect, 128);
@@ -159,24 +160,24 @@ test_depth_main (int argc, char *argv[])
                     "completed", G_CALLBACK (timeline_completed),
                     NULL);
 
-  d_behave =
-    clutter_behaviour_depth_new (clutter_alpha_new_full (timeline,
-                                                         CLUTTER_LINEAR),
-                                 -100, 100);
-  clutter_behaviour_apply (d_behave, label);
+  /* d_behave = */
+  /*   clutter_behaviour_depth_new (clutter_alpha_new_full (timeline, */
+  /*                                                        CLUTTER_LINEAR), */
+  /*                                -100, 100); */
+  /* clutter_behaviour_apply (d_behave, label); */
 
   /* add two faced actor */
   janus = janus_group ("GREEN", "RED");
-  clutter_container_add_actor (CLUTTER_CONTAINER (stage), janus);
+  clutter_actor_add_child (stage, janus);
   clutter_actor_set_position (janus, 300, 350);
 
-  r_behave =
-    clutter_behaviour_rotate_new (clutter_alpha_new_full (timeline,
-                                                          CLUTTER_LINEAR),
-                                  CLUTTER_Y_AXIS,
-                                  CLUTTER_ROTATE_CW,
-                                  0, 360);
-  clutter_behaviour_apply (r_behave, janus);
+  /* r_behave = */
+  /*   clutter_behaviour_rotate_new (clutter_alpha_new_full (timeline, */
+  /*                                                         CLUTTER_LINEAR), */
+  /*                                 CLUTTER_Y_AXIS, */
+  /*                                 CLUTTER_ROTATE_CW, */
+  /*                                 0, 360); */
+  /* clutter_behaviour_apply (r_behave, janus); */
 
   /* add hand box */
   box = clone_box (hand);
@@ -186,13 +187,13 @@ test_depth_main (int argc, char *argv[])
   clutter_actor_set_rotation (box, CLUTTER_X_AXIS, 45, 0, 0, 0);
   clutter_actor_set_opacity (box, 0x44);
 
-  r_behave =
-    clutter_behaviour_rotate_new (clutter_alpha_new_full (timeline,
-                                                          CLUTTER_LINEAR),
-                                  CLUTTER_Y_AXIS,
-                                  CLUTTER_ROTATE_CW,
-                                  0, 360);
-  clutter_behaviour_apply (r_behave, box);
+  /* r_behave = */
+  /*   clutter_behaviour_rotate_new (clutter_alpha_new_full (timeline, */
+  /*                                                         CLUTTER_LINEAR), */
+  /*                                 CLUTTER_Y_AXIS, */
+  /*                                 CLUTTER_ROTATE_CW, */
+  /*                                 0, 360); */
+  /* clutter_behaviour_apply (r_behave, box); */
 
   clutter_actor_show (stage);
 
@@ -204,7 +205,7 @@ test_depth_main (int argc, char *argv[])
 
   clutter_main ();
 
-  g_object_unref (d_behave);
+  /* g_object_unref (d_behave); */
   g_object_unref (timeline);
 
   return EXIT_SUCCESS;

@@ -183,7 +183,7 @@ manager_device_added_cb (ClutterDeviceManager *manager,
                                             NULL);
       g_hash_table_insert (app->devices, device, hand);
 
-      clutter_container_add_actor (CLUTTER_CONTAINER (app->stage), hand);
+      clutter_actor_add_child (app->stage, hand);
     }
 }
 
@@ -207,7 +207,7 @@ manager_device_removed_cb (ClutterDeviceManager *manager,
     {
       hand = g_hash_table_lookup (app->devices, device);
       if (hand != NULL)
-        clutter_container_add_actor (CLUTTER_CONTAINER (app->stage), hand);
+        clutter_actor_add_child (app->stage, hand);
 
       g_hash_table_remove (app->devices, device);
     }
@@ -239,7 +239,7 @@ test_devices_main (int argc, char **argv)
   g_signal_connect (stage,
                     "destroy", G_CALLBACK (clutter_main_quit),
                     NULL);
-  g_signal_connect (stage, 
+  g_signal_connect (stage,
                     "motion-event", G_CALLBACK (stage_motion_event_cb),
                     app);
   g_signal_connect (stage,
@@ -247,7 +247,7 @@ test_devices_main (int argc, char **argv)
                     app);
   app->stage = stage;
 
-  clutter_actor_show_all (stage);
+  clutter_actor_show (stage);
 
   manager = clutter_device_manager_get_default ();
   g_signal_connect (manager,
@@ -289,11 +289,11 @@ test_devices_main (int argc, char **argv)
                                                 NULL);
           g_hash_table_insert (app->devices, device, hand);
 
-          clutter_container_add_actor (CLUTTER_CONTAINER (stage), hand);
+          clutter_actor_add_child (stage, hand);
         }
     }
 
   clutter_main ();
 
   return EXIT_SUCCESS;
-} 
+}

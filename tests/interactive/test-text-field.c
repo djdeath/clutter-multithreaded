@@ -263,8 +263,6 @@ test_text_field_main (gint    argc,
 
   box = clutter_actor_new ();
   clutter_actor_set_layout_manager (box, table);
-  clutter_actor_add_constraint (box, clutter_bind_constraint_new (stage, CLUTTER_BIND_WIDTH, -24.0));
-  clutter_actor_add_constraint (box, clutter_bind_constraint_new (stage, CLUTTER_BIND_HEIGHT, -24.0));
   clutter_actor_set_position (box, 12, 12);
   clutter_actor_add_child (stage, box);
 

@@ -103,12 +103,10 @@ test_flow_layout_main (int argc, char *argv[])
   clutter_flow_layout_set_row_spacing (CLUTTER_FLOW_LAYOUT (layout),
                                        y_spacing);
 
-  box = clutter_box_new (layout);
-  clutter_box_set_color (CLUTTER_BOX (box), CLUTTER_COLOR_Aluminium2);
-  clutter_container_add_actor (CLUTTER_CONTAINER (stage), box);
-
-  if (!fixed_size)
-    clutter_actor_add_constraint (box, clutter_bind_constraint_new (stage, CLUTTER_BIND_SIZE, 0.0));
+  box = clutter_actor_new ();
+  clutter_actor_set_layout_manager (box, layout);
+  clutter_actor_set_background_color (box, CLUTTER_COLOR_Aluminium2);
+  clutter_actor_add_child (stage, box);
 
   clutter_actor_set_position (box, 0, 0);
 
@@ -127,9 +125,10 @@ test_flow_layout_main (int argc, char *argv[])
                               360.0 / n_rects * i,
                               0.5,
                               0.8);
-      rect = clutter_rectangle_new_with_color (&color);
+      rect = clutter_actor_new ();
+      clutter_actor_set_background_color (rect, &color);
 
-      clutter_container_add_actor (CLUTTER_CONTAINER (box), rect);
+      clutter_actor_add_child (box, rect);
 
       if (random_size)
         {
@@ -147,7 +146,7 @@ test_flow_layout_main (int argc, char *argv[])
       g_free (name);
     }
 
-  clutter_actor_show_all (stage);
+  clutter_actor_show (stage);
 
   clutter_main ();
 

@@ -18,20 +18,20 @@ typedef struct _KeyGroupClass   KeyGroupClass;
 
 struct _KeyGroup
 {
-  ClutterGroup parent_instance;
+  ClutterActor parent_instance;
 
   gint selected_index;
 };
 
 struct _KeyGroupClass
 {
-  ClutterGroupClass parent_class;
+  ClutterActorClass parent_class;
 
   void (* activate) (KeyGroup     *group,
                      ClutterActor *child);
 };
 
-G_DEFINE_TYPE (KeyGroup, key_group, CLUTTER_TYPE_GROUP);
+G_DEFINE_TYPE (KeyGroup, key_group, CLUTTER_TYPE_ACTOR);
 
 enum
 {
@@ -56,7 +56,7 @@ key_group_action_move_left (KeyGroup            *self,
            key_val,
            modifiers);
 
-  n_children = clutter_group_get_n_children (CLUTTER_GROUP (self));
+  n_children = clutter_actor_get_n_children (CLUTTER_ACTOR (self));
 
   self->selected_index -= 1;
 
@@ -80,7 +80,7 @@ key_group_action_move_right (KeyGroup            *self,
            key_val,
            modifiers);
 
-  n_children = clutter_group_get_n_children (CLUTTER_GROUP (self));
+  n_children = clutter_actor_get_n_children (CLUTTER_ACTOR (self));
 
   self->selected_index += 1;
 
@@ -107,8 +107,8 @@ key_group_action_activate (KeyGroup            *self,
   if (self->selected_index == -1)
     return FALSE;
 
-  child = clutter_group_get_nth_child (CLUTTER_GROUP (self),
-                                       self->selected_index);
+  child = clutter_actor_get_child_at_index (CLUTTER_ACTOR (self),
+                                            self->selected_index);
 
   if (child)
     {
@@ -148,7 +148,7 @@ key_group_paint (ClutterActor *actor)
   GList *children, *l;
   gint i;
 
-  children = clutter_container_get_children (CLUTTER_CONTAINER (self));
+  children = clutter_actor_get_children (actor);
 
   for (l = children, i = 0; l != NULL; l = l->next, i++)
     {
@@ -257,35 +257,36 @@ test_binding_pool_main (int argc, char *argv[])
   g_signal_connect (stage, "destroy", G_CALLBACK (clutter_main_quit), NULL);
 
   key_group = g_object_new (TYPE_KEY_GROUP, NULL);
-  clutter_container_add_actor (CLUTTER_CONTAINER (stage), key_group);
+  clutter_actor_add_child (stage, key_group);
 
   /* add three rectangles to the key group */
-  clutter_container_add (CLUTTER_CONTAINER (key_group),
-                         g_object_new (CLUTTER_TYPE_RECTANGLE,
-                                       "color", CLUTTER_COLOR_Red,
-                                       "name", "Red Rectangle",
-                                       "width", 50.0,
-                                       "height", 50.0,
-                                       "x", 0.0,
-                                       "y", 0.0,
-                                       NULL),
-                         g_object_new (CLUTTER_TYPE_RECTANGLE,
-                                       "color", CLUTTER_COLOR_Green,
-                                       "name", "Green Rectangle",
-                                       "width", 50.0,
-                                       "height", 50.0,
-                                       "x", 75.0,
-                                       "y", 0.0,
-                                       NULL),
-                         g_object_new (CLUTTER_TYPE_RECTANGLE,
-                                       "color", CLUTTER_COLOR_Blue,
-                                       "name", "Blue Rectangle",
-                                       "width", 50.0,
-                                       "height", 50.0,
-                                       "x", 150.0,
-                                       "y", 0.0,
-                                       NULL),
-                         NULL);
+  clutter_actor_add_child (key_group,
+                           g_object_new (CLUTTER_TYPE_ACTOR,
+                                         "background-color", CLUTTER_COLOR_Red,
+                                         "name", "Red Rectangle",
+                                         "width", 50.0,
+                                         "height", 50.0,
+                                         "x", 0.0,
+                                         "y", 0.0,
+                                         NULL));
+  clutter_actor_add_child (key_group,
+                           g_object_new (CLUTTER_TYPE_ACTOR,
+                                         "background-color", CLUTTER_COLOR_Green,
+                                         "name", "Green Rectangle",
+                                         "width", 50.0,
+                                         "height", 50.0,
+                                         "x", 75.0,
+                                         "y", 0.0,
+                                         NULL));
+  clutter_actor_add_child (key_group,
+                           g_object_new (CLUTTER_TYPE_ACTOR,
+                                         "background-color", CLUTTER_COLOR_Blue,
+                                         "name", "Blue Rectangle",
+                                         "width", 50.0,
+                                         "height", 50.0,
+                                         "x", 150.0,
+                                         "y", 0.0,
+                                         NULL));
 
   g_signal_connect (key_group,
                     "activate", G_CALLBACK (on_key_group_activate),

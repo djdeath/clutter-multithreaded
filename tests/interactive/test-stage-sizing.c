@@ -49,11 +49,13 @@ test_stage_sizing_main (int argc, char *argv[])
   g_signal_connect (stage, "destroy", G_CALLBACK (clutter_main_quit), NULL);
 
   label = clutter_text_new_with_text ("Sans 16", "Toggle fullscreen");
-  rect = clutter_rectangle_new_with_color (CLUTTER_COLOR_LightScarletRed);
+  rect = clutter_actor_new ();
+  clutter_actor_set_background_color (rect, CLUTTER_COLOR_LightScarletRed);
   clutter_actor_set_size (rect,
                           clutter_actor_get_width (label) + 20,
                           clutter_actor_get_height (label) + 20);
-  clutter_container_add (CLUTTER_CONTAINER (stage), rect, label, NULL);
+  clutter_actor_add_child (stage, rect);
+  clutter_actor_add_child (stage, label);
   clutter_actor_set_position (label, 10, 10);
   clutter_actor_set_reactive (rect, TRUE);
   g_signal_connect_swapped (rect, "button-press-event",
@@ -61,11 +63,13 @@ test_stage_sizing_main (int argc, char *argv[])
   width = clutter_actor_get_width (rect);
 
   label = clutter_text_new_with_text ("Sans 16", "Toggle resizable");
-  rect = clutter_rectangle_new_with_color (CLUTTER_COLOR_Chameleon);
+  rect = clutter_actor_new ();
+  clutter_actor_set_background_color (rect, CLUTTER_COLOR_Chameleon);
   clutter_actor_set_size (rect,
                           clutter_actor_get_width (label) + 20,
                           clutter_actor_get_height (label) + 20);
-  clutter_container_add (CLUTTER_CONTAINER (stage), rect, label, NULL);
+  clutter_actor_add_child (stage, rect);
+  clutter_actor_add_child (stage, label);
   clutter_actor_set_x (rect, width);
   clutter_actor_set_position (label, 10 + width, 10);
   clutter_actor_set_reactive (rect, TRUE);
@@ -74,11 +78,13 @@ test_stage_sizing_main (int argc, char *argv[])
   width += clutter_actor_get_width (rect);
 
   label = clutter_text_new_with_text ("Sans 16", "Shrink");
-  rect = clutter_rectangle_new_with_color (CLUTTER_COLOR_SkyBlue);
+  rect = clutter_actor_new ();
+  clutter_actor_set_background_color (rect, CLUTTER_COLOR_SkyBlue);
   clutter_actor_set_size (rect,
                           clutter_actor_get_width (label) + 20,
                           clutter_actor_get_height (label) + 20);
-  clutter_container_add (CLUTTER_CONTAINER (stage), rect, label, NULL);
+  clutter_actor_add_child (stage, rect);
+  clutter_actor_add_child (stage, label);
   clutter_actor_set_x (rect, width);
   clutter_actor_set_position (label, 10 + width, 10);
   clutter_actor_set_reactive (rect, TRUE);
@@ -87,11 +93,13 @@ test_stage_sizing_main (int argc, char *argv[])
   width += clutter_actor_get_width (rect);
 
   label = clutter_text_new_with_text ("Sans 16", "Expand");
-  rect = clutter_rectangle_new_with_color (CLUTTER_COLOR_Butter);
+  rect = clutter_actor_new ();
+  clutter_actor_set_background_color (rect, CLUTTER_COLOR_Butter);
   clutter_actor_set_size (rect,
                           clutter_actor_get_width (label) + 20,
                           clutter_actor_get_height (label) + 20);
-  clutter_container_add (CLUTTER_CONTAINER (stage), rect, label, NULL);
+  clutter_actor_add_child (stage, rect);
+  clutter_actor_add_child (stage, label);
   clutter_actor_set_x (rect, width);
   clutter_actor_set_position (label, 10 + width, 10);
   clutter_actor_set_reactive (rect, TRUE);

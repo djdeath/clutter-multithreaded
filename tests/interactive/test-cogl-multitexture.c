@@ -119,7 +119,7 @@ test_cogl_multitexture_main (int argc, char *argv[])
   clutter_actor_get_size (stage, &stage_w, &stage_h);
 
   clutter_stage_set_title (CLUTTER_STAGE (stage), "Cogl: Multi-texturing");
-  clutter_stage_set_color (CLUTTER_STAGE (stage), &stage_color);
+  clutter_actor_set_background_color (stage, &stage_color);
 
   g_signal_connect (stage, "destroy", G_CALLBACK (clutter_main_quit), NULL);
 
@@ -127,7 +127,7 @@ test_cogl_multitexture_main (int argc, char *argv[])
    * default paint handler, so that we can easily control
    * painting in a paint signal handler, without having to
    * sub-class anything etc. */
-  state->group = clutter_group_new ();
+  state->group = clutter_actor_new ();
   clutter_actor_set_position (state->group, stage_w / 2, stage_h / 2);
   g_signal_connect (state->group, "paint",
 		    G_CALLBACK(material_rectangle_paint), state);
@@ -198,8 +198,7 @@ test_cogl_multitexture_main (int argc, char *argv[])
   cogl_matrix_translate (&state->rot_matrix1, -0.5, -0.5, 0);
 
   clutter_actor_set_anchor_point (state->group, 86, 125);
-  clutter_container_add_actor (CLUTTER_CONTAINER(stage),
-			       state->group);
+  clutter_actor_add_child (stage, state->group);
 
   state->timeline = clutter_timeline_new (2812);
 
@@ -216,7 +215,7 @@ test_cogl_multitexture_main (int argc, char *argv[])
   /* start the timeline and thus the animations */
   clutter_timeline_start (state->timeline);
 
-  clutter_actor_show_all (stage);
+  clutter_actor_show (stage);
 
   clutter_main();
 

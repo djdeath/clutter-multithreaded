@@ -329,8 +329,8 @@ test_clip_main (int argc, char **argv)
   clutter_stage_set_title (CLUTTER_STAGE (data.stage), "Clipping");
   g_signal_connect (data.stage, "destroy", G_CALLBACK (clutter_main_quit), NULL);
 
-  stub_actor = clutter_rectangle_new ();
-  clutter_container_add (CLUTTER_CONTAINER (data.stage), stub_actor, NULL);
+  stub_actor = clutter_actor_new ();
+  clutter_actor_add_child (data.stage, stub_actor);
 
   file = g_build_filename (TESTS_DATADIR, "redhand.png", NULL);
   data.hand = cogl_texture_new_from_file (file,
@@ -345,7 +345,7 @@ test_clip_main (int argc, char **argv)
   clutter_actor_set_y (label,
                        clutter_actor_get_height (data.stage)
                        - clutter_actor_get_height (label));
-  clutter_container_add (CLUTTER_CONTAINER (data.stage), label, NULL);
+  clutter_actor_add_child (data.stage, label);
 
   g_signal_connect (stub_actor, "paint", G_CALLBACK (on_paint), &data);
 

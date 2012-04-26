@@ -63,11 +63,12 @@ test_scale_main (int argc, char *argv[])
   clutter_actor_set_size (stage, 300, 300);
   g_signal_connect (stage, "destroy", G_CALLBACK (clutter_main_quit), NULL);
 
-  rect = clutter_rectangle_new_with_color (&rect_color);
+  rect = clutter_actor_new ();
+  clutter_actor_set_background_color (rect, &rect_color);
   clutter_actor_set_size (rect, 100, 100);
   clutter_actor_set_position (rect, 100, 100);
 
-  clutter_container_add_actor (CLUTTER_CONTAINER (stage), rect);
+  clutter_actor_add_child (stage, rect);
 
   label = clutter_text_new_with_text ("Sans 20px", "");
   clutter_text_set_color (CLUTTER_TEXT (label), CLUTTER_COLOR_White);
@@ -76,33 +77,35 @@ test_scale_main (int argc, char *argv[])
                               clutter_actor_get_y (rect)
                               + clutter_actor_get_height (rect));
 
-  clutter_container_add_actor (CLUTTER_CONTAINER (stage), label);
+  clutter_actor_add_child (stage, label);
 
   rect_color.alpha = 0xff;
-  rect = clutter_rectangle_new_with_color (&rect_color);
+  rect = clutter_actor_new ();
+  clutter_actor_set_background_color (rect, &rect_color);
   clutter_actor_set_position (rect, 100, 100);
   clutter_actor_set_size (rect, 100, 100);
   set_next_gravity (rect);
 
-  clutter_container_add_actor (CLUTTER_CONTAINER (stage), rect);
+  clutter_actor_add_child (stage, rect);
 
   timeline = clutter_timeline_new (750);
-  alpha    = clutter_alpha_new_with_func (timeline,
-				          my_ramp_func,
-				          NULL, NULL);
+  /* alpha    = clutter_alpha_new_with_func (timeline, */
+  /*       			          my_ramp_func, */
+  /*       			          NULL, NULL); */
 
-  behave = clutter_behaviour_scale_new (alpha,
-					0.0, 0.0,  /* scale start */
-					1.0, 1.0); /* scale end */
+  /* behave = clutter_behaviour_scale_new (alpha, */
+  /*       				0.0, 0.0,  /\* scale start *\/ */
+  /*       				1.0, 1.0); /\* scale end *\/ */
 
-  clutter_behaviour_apply (behave, rect);
+  /* clutter_behaviour_apply (behave, rect); */
+  /* TODO_LIONEL: fix that crap */
 
   clutter_timeline_set_repeat_count (timeline, -1);
   g_signal_connect_swapped (timeline, "completed",
                             G_CALLBACK (set_next_gravity), rect);
   clutter_timeline_start (timeline);
 
-  clutter_actor_show_all (stage);
+  clutter_actor_show (stage);
 
   clutter_main();
 

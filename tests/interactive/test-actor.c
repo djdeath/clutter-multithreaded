@@ -103,7 +103,6 @@ test_actor_main (int argc, char *argv[])
   clutter_actor_set_name (vase, "vase");
   clutter_actor_set_layout_manager (vase, clutter_box_layout_new ());
   clutter_actor_set_background_color (vase, CLUTTER_COLOR_LightSkyBlue);
-  clutter_actor_add_constraint (vase, clutter_align_constraint_new (stage, CLUTTER_ALIGN_BOTH, 0.5));
   clutter_actor_add_child (stage, vase);
 
   flowers[0] = clutter_actor_new ();

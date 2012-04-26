@@ -171,7 +171,7 @@ on_key_press_event (ClutterStage *stage,
       clutter_text_set_text (CLUTTER_TEXT (help_label), "Press 'q' to quit");
 
       clutter_timeline_start (timeline);
-      
+
       data = test_thread_data_new ();
       data->stage = g_object_ref (stage);
       data->label = g_object_ref (count_label);
@@ -215,44 +215,46 @@ test_threads_main (int argc, char *argv[])
   clutter_actor_set_background_color (stage, CLUTTER_COLOR_Aluminium3);
   clutter_actor_set_size (stage, 600, 300);
   g_signal_connect (stage, "destroy", G_CALLBACK (clutter_main_quit), NULL);
-  
+
   count_label = clutter_text_new_with_text ("Mono 12", "Counter");
   clutter_actor_set_position (count_label, 350, 50);
 
   help_label = clutter_text_new_with_text ("Mono 12", "Press 's' to start");
   clutter_actor_set_position (help_label, 50, 50);
 
-  rect = clutter_rectangle_new_with_color (CLUTTER_COLOR_LightScarletRed);
+  rect = clutter_actor_new ();
+  clutter_actor_set_background_color (rect, CLUTTER_COLOR_LightScarletRed);
   clutter_actor_set_position (rect, 75, 150);
   clutter_actor_set_size (rect, 50, 50);
   clutter_actor_set_anchor_point (rect, 25, 25);
   clutter_actor_set_opacity (rect, 224);
 
-  progress_rect = clutter_rectangle_new_with_color (CLUTTER_COLOR_DarkChameleon);
+  progress_rect = clutter_actor_new ();
+  clutter_actor_set_background_color (progress_rect, CLUTTER_COLOR_DarkChameleon);
   clutter_actor_set_position (progress_rect, 50, 225);
   clutter_actor_set_size (progress_rect, 350, 50);
 
-  clutter_container_add (CLUTTER_CONTAINER (stage),
-                         count_label, help_label,
-                         rect, progress_rect,
-                         NULL);
+  clutter_actor_add_child (stage, count_label);
+  clutter_actor_add_child (stage, help_label);
+  clutter_actor_add_child (stage, rect);
+  clutter_actor_add_child (stage, progress_rect);
 
   timeline = clutter_timeline_new (3000);
   clutter_timeline_set_auto_reverse (timeline, TRUE);
   clutter_timeline_set_repeat_count (timeline, -1);
 
   alpha = clutter_alpha_new_full (timeline, CLUTTER_LINEAR);
-  r_behaviour = clutter_behaviour_rotate_new (alpha,
-                                              CLUTTER_Z_AXIS,
-                                              CLUTTER_ROTATE_CW,
-                                              0.0, 360.0);
-  clutter_behaviour_apply (r_behaviour, rect);
+  /* r_behaviour = clutter_behaviour_rotate_new (alpha, */
+  /*                                             CLUTTER_Z_AXIS, */
+  /*                                             CLUTTER_ROTATE_CW, */
+  /*                                             0.0, 360.0); */
+  /* clutter_behaviour_apply (r_behaviour, rect); */
 
   alpha = clutter_alpha_new_full (timeline, CLUTTER_LINEAR);
-  p_behaviour = clutter_behaviour_path_new_with_knots (alpha,
-                                                       knots,
-                                                       G_N_ELEMENTS (knots));
-  clutter_behaviour_apply (p_behaviour, rect);
+  /* p_behaviour = clutter_behaviour_path_new_with_knots (alpha, */
+  /*                                                      knots, */
+  /*                                                      G_N_ELEMENTS (knots)); */
+  /* clutter_behaviour_apply (p_behaviour, rect); */
 
   g_signal_connect (stage,
                     "button-press-event", G_CALLBACK (clutter_main_quit),
@@ -267,8 +269,8 @@ test_threads_main (int argc, char *argv[])
   clutter_main ();
   clutter_threads_leave ();
 
-  g_object_unref (p_behaviour);
-  g_object_unref (r_behaviour);
+  /* g_object_unref (p_behaviour); */
+  /* g_object_unref (r_behaviour); */
   g_object_unref (timeline);
 
   return EXIT_SUCCESS;

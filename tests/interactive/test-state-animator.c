@@ -32,7 +32,9 @@ static ClutterActor *new_rect (gint r,
 {
   GError *error = NULL;
   ClutterColor *color = clutter_color_new (r, g, b, a);
-  ClutterActor *rectangle = clutter_rectangle_new_with_color (color);
+  ClutterActor *rectangle = clutter_actor_new ();
+
+  clutter_actor_set_background_color (rectangle, color);
 
   gchar *file = g_build_filename (TESTS_DATADIR, "redhand.png", NULL);
   rectangle = clutter_texture_new_from_file (file, &error);
@@ -63,7 +65,7 @@ test_state_animator_main (gint    argc,
   for (i = 0; i < 2; i++)
     {
       rects[i] = new_rect (255 * (i * 1.0 / 40), 50, 160, 255);
-      clutter_container_add_actor (CLUTTER_CONTAINER (stage), rects[i]);
+      clutter_actor_add_child (stage, rects[i]);
       clutter_actor_set_anchor_point (rects[i], 64, 64);
       clutter_actor_set_position (rects[i], 320.0, 240.0);
       clutter_actor_set_opacity (rects[i], 0x70);

@@ -20,8 +20,8 @@ typedef struct SuperOH
   gint stage_height;
   gfloat radius;
 
-  ClutterBehaviour *scaler_1;
-  ClutterBehaviour *scaler_2;
+  /* ClutterBehaviour *scaler_1; */
+  /* ClutterBehaviour *scaler_2; */
   ClutterTimeline *timeline;
 } SuperOH;
 
@@ -208,8 +208,8 @@ test_actors_main (int argc, char *argv[])
   /* Set up some behaviours to handle scaling  */
   alpha = clutter_alpha_new_with_func (oh->timeline, my_sine_wave, NULL, NULL);
 
-  oh->scaler_1 = clutter_behaviour_scale_new (alpha, 0.5, 0.5, 1.0, 1.0);
-  oh->scaler_2 = clutter_behaviour_scale_new (alpha, 1.0, 1.0, 0.5, 0.5);
+  /* oh->scaler_1 = clutter_behaviour_scale_new (alpha, 0.5, 0.5, 1.0, 1.0); */
+  /* oh->scaler_2 = clutter_behaviour_scale_new (alpha, 1.0, 1.0, 0.5, 0.5); */
 
   file = g_build_filename (TESTS_DATADIR, "redhand.png", NULL);
   real_hand = clutter_texture_new_from_file (file, &error);
@@ -223,8 +223,8 @@ test_actors_main (int argc, char *argv[])
   clutter_actor_set_layout_manager (oh->group, clutter_fixed_layout_new ());
   clutter_actor_set_name (oh->group, "Group");
   g_signal_connect (oh->group, "destroy", G_CALLBACK (on_group_destroy), oh);
-  clutter_actor_add_constraint (oh->group, clutter_align_constraint_new (oh->stage, CLUTTER_ALIGN_BOTH, 0.5));
-  clutter_actor_add_constraint (oh->group, clutter_bind_constraint_new (oh->stage, CLUTTER_BIND_SIZE, 0.0f));
+  /* clutter_actor_add_constraint (oh->group, clutter_align_constraint_new (oh->stage, CLUTTER_ALIGN_BOTH, 0.5)); */
+  /* clutter_actor_add_constraint (oh->group, clutter_bind_constraint_new (oh->stage, CLUTTER_BIND_SIZE, 0.0f)); */
 
   oh->hand = g_new (ClutterActor*, n_hands);
 
@@ -272,7 +272,7 @@ test_actors_main (int argc, char *argv[])
 						   CLUTTER_GRAVITY_CENTER);
 
       /* Add to our group group */
-      clutter_container_add_actor (CLUTTER_CONTAINER (oh->group), oh->hand[i]);
+      clutter_actor_add_child (oh->group, oh->hand[i]);
 
       g_signal_connect (oh->hand[i], "button-press-event",
                         G_CALLBACK (on_button_press_event),
@@ -282,14 +282,14 @@ test_actors_main (int argc, char *argv[])
                         G_CALLBACK (on_hand_destroy),
                         oh);
 
-      if (i % 2)
-	clutter_behaviour_apply (oh->scaler_1, oh->hand[i]);
-      else
-	clutter_behaviour_apply (oh->scaler_2, oh->hand[i]);
+      /* if (i % 2) */
+      /*   clutter_behaviour_apply (oh->scaler_1, oh->hand[i]); */
+      /* else */
+      /*   clutter_behaviour_apply (oh->scaler_2, oh->hand[i]); */
     }
 
   /* Add the group to the stage */
-  clutter_container_add_actor (CLUTTER_CONTAINER (oh->stage), oh->group);
+  clutter_actor_add_child (oh->stage, oh->group);
 
   /* Show everying */
   clutter_actor_show (oh->stage);
@@ -306,8 +306,8 @@ test_actors_main (int argc, char *argv[])
   clutter_timeline_stop (oh->timeline);
 
   /* clean up */
-  g_object_unref (oh->scaler_1);
-  g_object_unref (oh->scaler_2);
+  /* g_object_unref (oh->scaler_1); */
+  /* g_object_unref (oh->scaler_2); */
   g_object_unref (oh->timeline);
   g_free (oh->hand);
   g_free (oh);

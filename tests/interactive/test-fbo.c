@@ -17,7 +17,7 @@ make_source (void)
 
   ClutterColor  yellow = {0xff, 0xff, 0x00, 0xff};
 
-  source  = clutter_group_new ();
+  source  = clutter_actor_new ();
 
   file = g_build_filename (TESTS_DATADIR, "redhand.png", NULL);
   actor = clutter_texture_new_from_file (file, &error);
@@ -26,13 +26,13 @@ make_source (void)
 
   g_free (file);
 
-  clutter_container_add_actor (CLUTTER_CONTAINER (source), actor);
+  clutter_actor_add_child (source, actor);
 
   actor = clutter_text_new_with_text ("Sans Bold 50px", "Clutter");
 
   clutter_text_set_color (CLUTTER_TEXT (actor), &yellow);
   clutter_actor_set_y (actor, clutter_actor_get_height(source) + 5);
-  clutter_container_add_actor (CLUTTER_CONTAINER (source), actor);
+  clutter_actor_add_child (source, actor);
 
   return source;
 }
@@ -61,8 +61,8 @@ test_fbo_main (int argc, char *argv[])
 
   /* Create the first source */
   onscreen_source = make_source();
-  clutter_actor_show_all (onscreen_source);
-  clutter_container_add_actor (CLUTTER_CONTAINER (stage), onscreen_source);
+  clutter_actor_show (onscreen_source);
+  clutter_actor_add_child (stage, onscreen_source);
 
   y_pos = (STAGE_HEIGHT/2.0) -
           (clutter_actor_get_height (onscreen_source)/2.0);
@@ -90,9 +90,9 @@ test_fbo_main (int argc, char *argv[])
 
   clutter_actor_set_position (fbo, x_pos, y_pos);
   x_pos += clutter_actor_get_width (fbo);
-  clutter_container_add_actor (CLUTTER_CONTAINER (stage), fbo);
+  clutter_actor_add_child (stage, fbo);
 
-  clutter_actor_show_all (stage);
+  clutter_actor_show (stage);
   clutter_main ();
 
   return 0;
