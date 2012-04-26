@@ -24,7 +24,7 @@
 
 /**
  * SECTION:clutter-actor
- * @short_description: The basic element of the scene graph 
+ * @short_description: The basic element of the scene graph
  *
  * The ClutterActor class is the basic element of the scene graph in Clutter,
  * and it encapsulates the position, size, and transformations of a node in
@@ -387,97 +387,6 @@
  *   should read the documentation for the #ClutterUnits parser format for
  *   the valid units and syntax.</para>
  * </refsect2>
- *
- * <refsect2 id="ClutterActor-custom-animatable-properties">
- *   <title>Custom animatable properties</title>
- *   <para>#ClutterActor allows accessing properties of #ClutterAction,
- *   #ClutterEffect, and #ClutterConstraint instances associated to an actor
- *   instance for animation purposes.</para>
- *   <para>In order to access a specific #ClutterAction or a #ClutterConstraint
- *   property it is necessary to set the #ClutterActorMeta:name property on the
- *   given action or constraint.</para>
- *   <para>The property can be accessed using the following syntax:</para>
- *   <informalexample>
- *     <programlisting>
- * @&lt;section&gt;.&lt;meta-name&gt;.&lt;property-name&gt;
- *     </programlisting>
- *   </informalexample>
- *   <para>The initial <emphasis>@</emphasis> is mandatory.</para>
- *   <para>The <emphasis>section</emphasis> fragment can be one between
- *   "actions", "constraints" and "effects".</para>
- *   <para>The <emphasis>meta-name</emphasis> fragment is the name of the
- *   action or constraint, as specified by the #ClutterActorMeta:name
- *   property.</para>
- *   <para>The <emphasis>property-name</emphasis> fragment is the name of the
- *   action or constraint property to be animated.</para>
- *   <para>The example below animates a #ClutterBindConstraint applied to an
- *   actor using clutter_actor_animate(). The <emphasis>rect</emphasis> has
- *   a binding constraint for the <emphasis>origin</emphasis> actor, and in
- *   its initial state is overlapping the actor to which is bound to.</para>
- *   <informalexample><programlisting>
- * constraint = clutter_bind_constraint_new (origin, CLUTTER_BIND_X, 0.0);
- * clutter_actor_meta_set_name (CLUTTER_ACTOR_META (constraint), "bind-x");
- * clutter_actor_add_constraint (rect, constraint);
- *
- * constraint = clutter_bind_constraint_new (origin, CLUTTER_BIND_Y, 0.0);
- * clutter_actor_meta_set_name (CLUTTER_ACTOR_META (constraint), "bind-y");
- * clutter_actor_add_constraint (rect, constraint);
- *
- * clutter_actor_set_reactive (origin, TRUE);
- *
- * g_signal_connect (origin, "button-press-event",
- *                   G_CALLBACK (on_button_press),
- *                   rect);
- *   </programlisting></informalexample>
- *   <para>On button press, the rectangle "slides" from behind the actor to
- *   which is bound to, using the #ClutterBindConstraint:offset property to
- *   achieve the effect:</para>
- *   <informalexample><programlisting>
- * gboolean
- * on_button_press (ClutterActor *origin,
- *                  ClutterEvent *event,
- *                  ClutterActor *rect)
- * {
- *   ClutterTransition *transition;
- *   ClutterInterval *interval;
- *
- *   /&ast; the offset that we want to apply; this will make the actor
- *    &ast; slide in from behind the origin and rest at the right of
- *    &ast; the origin, plus a padding value.
- *    &ast;/
- *   float new_offset = clutter_actor_get_width (origin) + h_padding;
- *
- *   /&ast; the property we wish to animate; the "@constraints" section
- *    &ast; tells Clutter to check inside the constraints associated
- *    &ast; with the actor; the "bind-x" section is the name of the
- *    &ast; constraint; and the "offset" is the name of the property
- *    &ast; on the constraint.
- *    &ast;/
- *   const char *prop = "@constraints.bind-x.offset";
- *
- *   /&ast; create a new transition for the given property &ast;/
- *   transition = clutter_property_transition_new (prop);
- *
- *   /&ast; set the easing mode and duration &ast;/
- *   clutter_timeline_set_progress_mode (CLUTTER_TIMELINE (transition),
- *                                       CLUTTER_EASE_OUT_CUBIC);
- *   clutter_timeline_set_duration (CLUTTER_TIMELINE (transition), 500);
- *
- *   /&ast; create the interval with the initial and final values &ast;/
- *   interval = clutter_interval_new (G_TYPE_FLOAT, 0, new_offset);
- *   clutter_transition_set_interval (transition, interval);
- *
- *   /&ast; add the transition to the actor; this causes the animation
- *    &ast; to start. the name "offsetAnimation" can be used to retrieve
- *    &ast; the transition later.
- *    &ast;/
- *   clutter_actor_add_transition (rect, "offsetAnimation", transition);
- *
- *   /&ast; we handled the event &ast;/
- *   return CLUTTER_EVENT_STOP;
- * }
- *   </programlisting></informalexample>
- * </refsect2>
  */
 
 /**
@@ -695,8 +604,6 @@ struct _ClutterActorPrivate
   gint internal_child;
 
   /* meta classes */
-  ClutterMetaGroup *actions;
-  ClutterMetaGroup *constraints;
   ClutterMetaGroup *effects;
 
   /* delegate object used to allocate the children of this actor */
@@ -854,8 +761,6 @@ enum
   PROP_TEXT_DIRECTION,
   PROP_HAS_POINTER,
 
-  PROP_ACTIONS,
-  PROP_CONSTRAINTS,
   PROP_EFFECT,
 
   PROP_LAYOUT_MANAGER,
@@ -4524,14 +4429,6 @@ clutter_actor_set_property (GObject      *object,
       clutter_actor_set_text_direction (actor, g_value_get_enum (value));
       break;
 
-    case PROP_ACTIONS:
-      clutter_actor_add_action (actor, g_value_get_object (value));
-      break;
-
-    case PROP_CONSTRAINTS:
-      clutter_actor_add_constraint (actor, g_value_get_object (value));
-      break;
-
     case PROP_EFFECT:
       clutter_actor_add_effect (actor, g_value_get_object (value));
       break;
@@ -5059,8 +4956,6 @@ clutter_actor_dispose (GObject *object)
     }
 
   g_clear_object (&priv->pango_context);
-  g_clear_object (&priv->actions);
-  g_clear_object (&priv->constraints);
   g_clear_object (&priv->effects);
   g_clear_object (&priv->flatten_effect);
 
@@ -6200,34 +6095,6 @@ clutter_actor_class_init (ClutterActorClass *klass)
                           P_("Whether the actor contains the pointer of an input device"),
                           FALSE,
                           CLUTTER_PARAM_READABLE);
-
-  /**
-   * ClutterActor:actions:
-   *
-   * Adds a #ClutterAction to the actor
-   *
-   * Since: 1.4
-   */
-  obj_props[PROP_ACTIONS] =
-    g_param_spec_object ("actions",
-                         P_("Actions"),
-                         P_("Adds an action to the actor"),
-                         CLUTTER_TYPE_ACTION,
-                         CLUTTER_PARAM_WRITABLE);
-
-  /**
-   * ClutterActor:constraints:
-   *
-   * Adds a #ClutterConstraint to the actor
-   *
-   * Since: 1.4
-   */
-  obj_props[PROP_CONSTRAINTS] =
-    g_param_spec_object ("constraints",
-                         P_("Constraints"),
-                         P_("Adds a constraint to the actor"),
-                         CLUTTER_TYPE_CONSTRAINT,
-                         CLUTTER_PARAM_WRITABLE);
 
   /**
    * ClutterActor:effect:
@@ -8253,41 +8120,6 @@ clutter_actor_get_allocation_geometry (ClutterActor    *self,
   geom->height = CLUTTER_NEARBYINT (clutter_actor_box_get_height (&box));
 }
 
-static void
-clutter_actor_update_constraints (ClutterActor    *self,
-                                  ClutterActorBox *allocation)
-{
-  ClutterActorPrivate *priv = self->priv;
-  const GList *constraints, *l;
-
-  if (priv->constraints == NULL)
-    return;
-
-  constraints = _clutter_meta_group_peek_metas (priv->constraints);
-  for (l = constraints; l != NULL; l = l->next)
-    {
-      ClutterConstraint *constraint = l->data;
-      ClutterActorMeta *meta = l->data;
-
-      if (clutter_actor_meta_get_enabled (meta))
-        {
-          _clutter_constraint_update_allocation (constraint,
-                                                 self,
-                                                 allocation);
-
-          CLUTTER_NOTE (LAYOUT,
-                        "Allocation of '%s' after constraint '%s': "
-                        "{ %.2f, %.2f, %.2f, %.2f }",
-                        _clutter_actor_get_debug_name (self),
-                        _clutter_actor_meta_get_debug_name (meta),
-                        allocation->x1,
-                        allocation->y1,
-                        allocation->x2,
-                        allocation->y2);
-        }
-    }
-}
-
 /*< private >
  * clutter_actor_adjust_allocation:
  * @self: a #ClutterActor
@@ -8438,12 +8270,6 @@ clutter_actor_allocate (ClutterActor           *self,
   old_allocation = priv->allocation;
   real_allocation = *box;
 
-  /* constraints are allowed to modify the allocation only here; we do
-   * this prior to all the other checks so that we can bail out if the
-   * allocation did not change
-   */
-  clutter_actor_update_constraints (self, &real_allocation);
-
   /* adjust the allocation depending on the align/margin properties */
   clutter_actor_adjust_allocation (self, &real_allocation);
 
@@ -8525,13 +8351,13 @@ clutter_actor_allocate (ClutterActor           *self,
  * This function can only be called from within the implementation of
  * the #ClutterActorClass.allocate() virtual function.
  *
- * The allocation should have been adjusted to take into account constraints,
- * alignment, and margin properties. If you are implementing a #ClutterActor
- * subclass that provides its own layout management policy for its children
- * instead of using a #ClutterLayoutManager delegate, you should not call
- * this function on the children of @self; instead, you should call
- * clutter_actor_allocate(), which will adjust the allocation box for
- * you.
+ * The allocation should have been adjusted to take into account
+ * alignment and margin properties. If you are implementing a
+ * #ClutterActor subclass that provides its own layout management
+ * policy for its children instead of using a #ClutterLayoutManager
+ * delegate, you should not call this function on the children of
+ * @self; instead, you should call clutter_actor_allocate(), which
+ * will adjust the allocation box for you.
  *
  * This function should only be used by subclasses of #ClutterActor
  * that wish to store their allocation but cannot chain up to the
@@ -12681,27 +12507,7 @@ clutter_actor_parse_custom_node (ClutterScriptable *scriptable,
       else
         g_slice_free (RotationInfo, info);
     }
-  else if (strcmp (name, "behaviours") == 0)
-    {
-      GSList *l;
-
-#ifdef CLUTTER_ENABLE_DEBUG
-      if (G_UNLIKELY (_clutter_diagnostic_enabled ()))
-        _clutter_diagnostic_message ("The 'behaviours' key is deprecated "
-                                     "and it should not be used in newly "
-                                     "written ClutterScript definitions.");
-#endif
-
-      l = parse_behaviours (script, actor, node);
-
-      g_value_init (value, G_TYPE_POINTER);
-      g_value_set_pointer (value, l);
-
-      retval = TRUE;
-    }
-  else if (strcmp (name, "actions") == 0 ||
-           strcmp (name, "constraints") == 0 ||
-           strcmp (name, "effects") == 0)
+  else if (strcmp (name, "effects") == 0)
     {
       GSList *l;
 
@@ -12778,9 +12584,7 @@ clutter_actor_set_custom_property (ClutterScriptable *scriptable,
       return;
     }
 
-  if (strcmp (name, "actions") == 0 ||
-      strcmp (name, "constraints") == 0 ||
-      strcmp (name, "effects") == 0)
+  if (strcmp (name, "effects") == 0)
     {
       GSList *metas, *l;
 
@@ -12789,16 +12593,7 @@ clutter_actor_set_custom_property (ClutterScriptable *scriptable,
 
       metas = g_value_get_pointer (value);
       for (l = metas; l != NULL; l = l->next)
-        {
-          if (name[0] == 'a')
-            clutter_actor_add_action (actor, l->data);
-
-          if (name[0] == 'c')
-            clutter_actor_add_constraint (actor, l->data);
-
-          if (name[0] == 'e')
-            clutter_actor_add_effect (actor, l->data);
-        }
+        clutter_actor_add_effect (actor, l->data);
 
       g_slist_free (metas);
 
@@ -12849,12 +12644,6 @@ get_meta_from_animation_property (ClutterActor  *actor,
       g_strfreev (tokens);
       return NULL;
     }
-
-  if (strcmp (tokens[0], "actions") == 0)
-    meta = _clutter_meta_group_get_meta (priv->actions, tokens[1]);
-
-  if (strcmp (tokens[0], "constraints") == 0)
-    meta = _clutter_meta_group_get_meta (priv->constraints, tokens[1]);
 
   if (strcmp (tokens[0], "effects") == 0)
     meta = _clutter_meta_group_get_meta (priv->effects, tokens[1]);
@@ -14677,421 +14466,6 @@ clutter_actor_has_allocation (ClutterActor *self)
 }
 
 /**
- * clutter_actor_add_action:
- * @self: a #ClutterActor
- * @action: a #ClutterAction
- *
- * Adds @action to the list of actions applied to @self
- *
- * A #ClutterAction can only belong to one actor at a time
- *
- * The #ClutterActor will hold a reference on @action until either
- * clutter_actor_remove_action() or clutter_actor_clear_actions()
- * is called
- *
- * Since: 1.4
- */
-void
-clutter_actor_add_action (ClutterActor  *self,
-                          ClutterAction *action)
-{
-  ClutterActorPrivate *priv;
-
-  g_return_if_fail (CLUTTER_IS_ACTOR (self));
-  g_return_if_fail (CLUTTER_IS_ACTION (action));
-
-  priv = self->priv;
-
-  if (priv->actions == NULL)
-    {
-      priv->actions = g_object_new (CLUTTER_TYPE_META_GROUP, NULL);
-      priv->actions->actor = self;
-    }
-
-  _clutter_meta_group_add_meta (priv->actions, CLUTTER_ACTOR_META (action));
-
-  g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_ACTIONS]);
-}
-
-/**
- * clutter_actor_add_action_with_name:
- * @self: a #ClutterActor
- * @name: the name to set on the action
- * @action: a #ClutterAction
- *
- * A convenience function for setting the name of a #ClutterAction
- * while adding it to the list of actions applied to @self
- *
- * This function is the logical equivalent of:
- *
- * |[
- *   clutter_actor_meta_set_name (CLUTTER_ACTOR_META (action), name);
- *   clutter_actor_add_action (self, action);
- * ]|
- *
- * Since: 1.4
- */
-void
-clutter_actor_add_action_with_name (ClutterActor  *self,
-                                    const gchar   *name,
-                                    ClutterAction *action)
-{
-  g_return_if_fail (CLUTTER_IS_ACTOR (self));
-  g_return_if_fail (name != NULL);
-  g_return_if_fail (CLUTTER_IS_ACTION (action));
-
-  clutter_actor_meta_set_name (CLUTTER_ACTOR_META (action), name);
-  clutter_actor_add_action (self, action);
-}
-
-/**
- * clutter_actor_remove_action:
- * @self: a #ClutterActor
- * @action: a #ClutterAction
- *
- * Removes @action from the list of actions applied to @self
- *
- * The reference held by @self on the #ClutterAction will be released
- *
- * Since: 1.4
- */
-void
-clutter_actor_remove_action (ClutterActor  *self,
-                             ClutterAction *action)
-{
-  ClutterActorPrivate *priv;
-
-  g_return_if_fail (CLUTTER_IS_ACTOR (self));
-  g_return_if_fail (CLUTTER_IS_ACTION (action));
-
-  priv = self->priv;
-
-  if (priv->actions == NULL)
-    return;
-
-  _clutter_meta_group_remove_meta (priv->actions, CLUTTER_ACTOR_META (action));
-
-  if (_clutter_meta_group_peek_metas (priv->actions) == NULL)
-    g_clear_object (&priv->actions);
-
-  g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_ACTIONS]);
-}
-
-/**
- * clutter_actor_remove_action_by_name:
- * @self: a #ClutterActor
- * @name: the name of the action to remove
- *
- * Removes the #ClutterAction with the given name from the list
- * of actions applied to @self
- *
- * Since: 1.4
- */
-void
-clutter_actor_remove_action_by_name (ClutterActor *self,
-                                     const gchar  *name)
-{
-  ClutterActorPrivate *priv;
-  ClutterActorMeta *meta;
-
-  g_return_if_fail (CLUTTER_IS_ACTOR (self));
-  g_return_if_fail (name != NULL);
-
-  priv = self->priv;
-
-  if (priv->actions == NULL)
-    return;
-
-  meta = _clutter_meta_group_get_meta (priv->actions, name);
-  if (meta == NULL)
-    return;
-
-  _clutter_meta_group_remove_meta (priv->actions, meta);
-
-  g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_ACTIONS]);
-}
-
-/**
- * clutter_actor_get_actions:
- * @self: a #ClutterActor
- *
- * Retrieves the list of actions applied to @self
- *
- * Return value: (transfer container) (element-type Clutter.Action): a copy
- *   of the list of #ClutterAction<!-- -->s. The contents of the list are
- *   owned by the #ClutterActor. Use g_list_free() to free the resources
- *   allocated by the returned #GList
- *
- * Since: 1.4
- */
-GList *
-clutter_actor_get_actions (ClutterActor *self)
-{
-  g_return_val_if_fail (CLUTTER_IS_ACTOR (self), NULL);
-
-  if (self->priv->actions == NULL)
-    return NULL;
-
-  return _clutter_meta_group_get_metas_no_internal (self->priv->actions);
-}
-
-/**
- * clutter_actor_get_action:
- * @self: a #ClutterActor
- * @name: the name of the action to retrieve
- *
- * Retrieves the #ClutterAction with the given name in the list
- * of actions applied to @self
- *
- * Return value: (transfer none): a #ClutterAction for the given
- *   name, or %NULL. The returned #ClutterAction is owned by the
- *   actor and it should not be unreferenced directly
- *
- * Since: 1.4
- */
-ClutterAction *
-clutter_actor_get_action (ClutterActor *self,
-                          const gchar  *name)
-{
-  g_return_val_if_fail (CLUTTER_IS_ACTOR (self), NULL);
-  g_return_val_if_fail (name != NULL, NULL);
-
-  if (self->priv->actions == NULL)
-    return NULL;
-
-  return CLUTTER_ACTION (_clutter_meta_group_get_meta (self->priv->actions, name));
-}
-
-/**
- * clutter_actor_clear_actions:
- * @self: a #ClutterActor
- *
- * Clears the list of actions applied to @self
- *
- * Since: 1.4
- */
-void
-clutter_actor_clear_actions (ClutterActor *self)
-{
-  g_return_if_fail (CLUTTER_IS_ACTOR (self));
-
-  if (self->priv->actions == NULL)
-    return;
-
-  _clutter_meta_group_clear_metas_no_internal (self->priv->actions);
-}
-
-/**
- * clutter_actor_add_constraint:
- * @self: a #ClutterActor
- * @constraint: a #ClutterConstraint
- *
- * Adds @constraint to the list of #ClutterConstraint<!-- -->s applied
- * to @self
- *
- * The #ClutterActor will hold a reference on the @constraint until
- * either clutter_actor_remove_constraint() or
- * clutter_actor_clear_constraints() is called.
- *
- * Since: 1.4
- */
-void
-clutter_actor_add_constraint (ClutterActor      *self,
-                              ClutterConstraint *constraint)
-{
-  ClutterActorPrivate *priv;
-
-  g_return_if_fail (CLUTTER_IS_ACTOR (self));
-  g_return_if_fail (CLUTTER_IS_CONSTRAINT (constraint));
-
-  priv = self->priv;
-
-  if (priv->constraints == NULL)
-    {
-      priv->constraints = g_object_new (CLUTTER_TYPE_META_GROUP, NULL);
-      priv->constraints->actor = self;
-    }
-
-  _clutter_meta_group_add_meta (priv->constraints,
-                                CLUTTER_ACTOR_META (constraint));
-  clutter_actor_queue_relayout (self);
-
-  g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_CONSTRAINTS]);
-}
-
-/**
- * clutter_actor_add_constraint_with_name:
- * @self: a #ClutterActor
- * @name: the name to set on the constraint
- * @constraint: a #ClutterConstraint
- *
- * A convenience function for setting the name of a #ClutterConstraint
- * while adding it to the list of constraints applied to @self
- *
- * This function is the logical equivalent of:
- *
- * |[
- *   clutter_actor_meta_set_name (CLUTTER_ACTOR_META (constraint), name);
- *   clutter_actor_add_constraint (self, constraint);
- * ]|
- *
- * Since: 1.4
- */
-void
-clutter_actor_add_constraint_with_name (ClutterActor      *self,
-                                        const gchar       *name,
-                                        ClutterConstraint *constraint)
-{
-  g_return_if_fail (CLUTTER_IS_ACTOR (self));
-  g_return_if_fail (name != NULL);
-  g_return_if_fail (CLUTTER_IS_CONSTRAINT (constraint));
-
-  clutter_actor_meta_set_name (CLUTTER_ACTOR_META (constraint), name);
-  clutter_actor_add_constraint (self, constraint);
-}
-
-/**
- * clutter_actor_remove_constraint:
- * @self: a #ClutterActor
- * @constraint: a #ClutterConstraint
- *
- * Removes @constraint from the list of constraints applied to @self
- *
- * The reference held by @self on the #ClutterConstraint will be released
- *
- * Since: 1.4
- */
-void
-clutter_actor_remove_constraint (ClutterActor      *self,
-                                 ClutterConstraint *constraint)
-{
-  ClutterActorPrivate *priv;
-
-  g_return_if_fail (CLUTTER_IS_ACTOR (self));
-  g_return_if_fail (CLUTTER_IS_CONSTRAINT (constraint));
-
-  priv = self->priv;
-
-  if (priv->constraints == NULL)
-    return;
-
-  _clutter_meta_group_remove_meta (priv->constraints,
-                                   CLUTTER_ACTOR_META (constraint));
-
-  if (_clutter_meta_group_peek_metas (priv->constraints) == NULL)
-    g_clear_object (&priv->constraints);
-
-  clutter_actor_queue_relayout (self);
-
-  g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_CONSTRAINTS]);
-}
-
-/**
- * clutter_actor_remove_constraint_by_name:
- * @self: a #ClutterActor
- * @name: the name of the constraint to remove
- *
- * Removes the #ClutterConstraint with the given name from the list
- * of constraints applied to @self
- *
- * Since: 1.4
- */
-void
-clutter_actor_remove_constraint_by_name (ClutterActor *self,
-                                         const gchar  *name)
-{
-  ClutterActorPrivate *priv;
-  ClutterActorMeta *meta;
-
-  g_return_if_fail (CLUTTER_IS_ACTOR (self));
-  g_return_if_fail (name != NULL);
-
-  priv = self->priv;
-
-  if (priv->constraints == NULL)
-    return;
-
-  meta = _clutter_meta_group_get_meta (priv->constraints, name);
-  if (meta == NULL)
-    return;
-
-  _clutter_meta_group_remove_meta (priv->constraints, meta);
-  clutter_actor_queue_relayout (self);
-}
-
-/**
- * clutter_actor_get_constraints:
- * @self: a #ClutterActor
- *
- * Retrieves the list of constraints applied to @self
- *
- * Return value: (transfer container) (element-type Clutter.Constraint): a copy
- *   of the list of #ClutterConstraint<!-- -->s. The contents of the list are
- *   owned by the #ClutterActor. Use g_list_free() to free the resources
- *   allocated by the returned #GList
- *
- * Since: 1.4
- */
-GList *
-clutter_actor_get_constraints (ClutterActor *self)
-{
-  g_return_val_if_fail (CLUTTER_IS_ACTOR (self), NULL);
-
-  if (self->priv->constraints == NULL)
-    return NULL;
-
-  return _clutter_meta_group_get_metas_no_internal (self->priv->constraints);
-}
-
-/**
- * clutter_actor_get_constraint:
- * @self: a #ClutterActor
- * @name: the name of the constraint to retrieve
- *
- * Retrieves the #ClutterConstraint with the given name in the list
- * of constraints applied to @self
- *
- * Return value: (transfer none): a #ClutterConstraint for the given
- *   name, or %NULL. The returned #ClutterConstraint is owned by the
- *   actor and it should not be unreferenced directly
- *
- * Since: 1.4
- */
-ClutterConstraint *
-clutter_actor_get_constraint (ClutterActor *self,
-                              const gchar  *name)
-{
-  g_return_val_if_fail (CLUTTER_IS_ACTOR (self), NULL);
-  g_return_val_if_fail (name != NULL, NULL);
-
-  if (self->priv->constraints == NULL)
-    return NULL;
-
-  return CLUTTER_CONSTRAINT (_clutter_meta_group_get_meta (self->priv->constraints, name));
-}
-
-/**
- * clutter_actor_clear_constraints:
- * @self: a #ClutterActor
- *
- * Clears the list of constraints applied to @self
- *
- * Since: 1.4
- */
-void
-clutter_actor_clear_constraints (ClutterActor *self)
-{
-  g_return_if_fail (CLUTTER_IS_ACTOR (self));
-
-  if (self->priv->constraints == NULL)
-    return;
-
-  _clutter_meta_group_clear_metas_no_internal (self->priv->constraints);
-
-  clutter_actor_queue_relayout (self);
-}
-
-/**
  * clutter_actor_set_clip_to_allocation:
  * @self: a #ClutterActor
  * @clip_set: %TRUE to apply a clip tracking the allocation
@@ -15685,44 +15059,6 @@ clutter_actor_has_effects (ClutterActor *self)
     return FALSE;
 
   return _clutter_meta_group_has_metas_no_internal (self->priv->effects);
-}
-
-/**
- * clutter_actor_has_constraints:
- * @self: A #ClutterActor
- *
- * Returns whether the actor has any constraints applied.
- *
- * Return value: %TRUE if the actor has any constraints,
- *   %FALSE otherwise
- *
- * Since: 1.10
- */
-gboolean
-clutter_actor_has_constraints (ClutterActor *self)
-{
-  g_return_val_if_fail (CLUTTER_IS_ACTOR (self), TRUE);
-
-  return self->priv->constraints != NULL;
-}
-
-/**
- * clutter_actor_has_actions:
- * @self: A #ClutterActor
- *
- * Returns whether the actor has any actions applied.
- *
- * Return value: %TRUE if the actor has any actions,
- *   %FALSE otherwise
- *
- * Since: 1.10
- */
-gboolean
-clutter_actor_has_actions (ClutterActor *self)
-{
-  g_return_val_if_fail (CLUTTER_IS_ACTOR (self), TRUE);
-
-  return self->priv->actions != NULL;
 }
 
 /**

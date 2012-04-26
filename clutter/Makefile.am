@@ -14,7 +14,6 @@ lib_LTLIBRARIES =
 INCLUDES = \
 	-I$(top_srcdir) 				\
 	-I$(top_srcdir)/clutter				\
-	-I$(top_srcdir)/clutter/deprecated		\
 	-I$(top_srcdir)/clutter/cally			\
 	-I$(top_builddir)				\
 	-I$(top_builddir)/clutter			\
@@ -29,7 +28,6 @@ AM_CPPFLAGS = \
 	-DCLUTTER_COMPILATION=1			\
 	-DCOGL_ENABLE_EXPERIMENTAL_API		\
 	-DG_LOG_DOMAIN=\"Clutter\" 		\
-	$(CLUTTER_DEPRECATED_CFLAGS)		\
 	$(CLUTTER_DEBUG_CFLAGS)			\
 	$(CLUTTER_PROFILE_CFLAGS)		\
 	$(NULL)
@@ -42,23 +40,19 @@ INTROSPECTION_GIRS =
 # the base include path for headers
 clutter_base_includedir = $(includedir)/clutter-$(CLUTTER_API_VERSION)
 clutter_includedir = $(clutter_base_includedir)/clutter
-clutter_deprecateddir = $(clutter_base_includedir)/clutter/deprecated
 
 # pkg-config files
 pc_files =
 
 # common sources - please, keep these sorted alphabetically
 source_h =					\
-	$(srcdir)/clutter-action.h		\
 	$(srcdir)/clutter-actor-meta.h		\
 	$(srcdir)/clutter-actor.h		\
-	$(srcdir)/clutter-align-constraint.h	\
 	$(srcdir)/clutter-alpha.h		\
 	$(srcdir)/clutter-animatable.h          \
 	$(srcdir)/clutter-animation.h           \
 	$(srcdir)/clutter-animator.h		\
 	$(srcdir)/clutter-backend.h		\
-	$(srcdir)/clutter-bind-constraint.h	\
 	$(srcdir)/clutter-binding-pool.h 	\
 	$(srcdir)/clutter-bin-layout.h		\
 	$(srcdir)/clutter-blur-effect.h		\
@@ -67,28 +61,22 @@ source_h =					\
 	$(srcdir)/clutter-cairo-texture.h	\
 	$(srcdir)/clutter-canvas.h		\
 	$(srcdir)/clutter-child-meta.h		\
-	$(srcdir)/clutter-click-action.h	\
 	$(srcdir)/clutter-cogl-compat.h 	\
 	$(srcdir)/clutter-clone.h		\
 	$(srcdir)/clutter-color-static.h	\
 	$(srcdir)/clutter-color.h		\
 	$(srcdir)/clutter-colorize-effect.h	\
-	$(srcdir)/clutter-constraint.h		\
 	$(srcdir)/clutter-container.h		\
 	$(srcdir)/clutter-content.h		\
 	$(srcdir)/clutter-deform-effect.h	\
-	$(srcdir)/clutter-deprecated.h		\
 	$(srcdir)/clutter-desaturate-effect.h	\
 	$(srcdir)/clutter-device-manager.h	\
-	$(srcdir)/clutter-drag-action.h		\
-	$(srcdir)/clutter-drop-action.h		\
 	$(srcdir)/clutter-effect.h		\
 	$(srcdir)/clutter-enums.h		\
 	$(srcdir)/clutter-event.h 		\
 	$(srcdir)/clutter-feature.h 		\
 	$(srcdir)/clutter-fixed-layout.h	\
 	$(srcdir)/clutter-flow-layout.h		\
-	$(srcdir)/clutter-gesture-action.h 	\
 	$(srcdir)/clutter-group.h 		\
 	$(srcdir)/clutter-image.h		\
 	$(srcdir)/clutter-input-device.h	\
@@ -105,7 +93,6 @@ source_h =					\
 	$(srcdir)/clutter-page-turn-effect.h	\
 	$(srcdir)/clutter-paint-nodes.h		\
 	$(srcdir)/clutter-paint-node.h		\
-	$(srcdir)/clutter-path-constraint.h	\
 	$(srcdir)/clutter-path.h		\
 	$(srcdir)/clutter-property-transition.h	\
 	$(srcdir)/clutter-script.h		\
@@ -113,7 +100,6 @@ source_h =					\
 	$(srcdir)/clutter-settings.h		\
 	$(srcdir)/clutter-shader-effect.h	\
 	$(srcdir)/clutter-shader-types.h	\
-	$(srcdir)/clutter-snap-constraint.h	\
 	$(srcdir)/clutter-stage.h 		\
 	$(srcdir)/clutter-stage-manager.h	\
 	$(srcdir)/clutter-state.h		\
@@ -128,18 +114,15 @@ source_h =					\
 	$(NULL)
 
 source_c = \
-	$(srcdir)/clutter-action.c		\
 	$(srcdir)/clutter-actor-box.c		\
 	$(srcdir)/clutter-actor-meta.c		\
 	$(srcdir)/clutter-actor.c		\
-	$(srcdir)/clutter-align-constraint.c	\
 	$(srcdir)/clutter-alpha.c 		\
 	$(srcdir)/clutter-animatable.c		\
 	$(srcdir)/clutter-animation.c		\
 	$(srcdir)/clutter-animator.c		\
 	$(srcdir)/clutter-backend.c		\
 	$(srcdir)/clutter-bezier.c		\
-	$(srcdir)/clutter-bind-constraint.c	\
 	$(srcdir)/clutter-binding-pool.c	\
 	$(srcdir)/clutter-bin-layout.c		\
 	$(srcdir)/clutter-blur-effect.c		\
@@ -148,25 +131,20 @@ source_c = \
 	$(srcdir)/clutter-cairo-texture.c       \
 	$(srcdir)/clutter-canvas.c		\
 	$(srcdir)/clutter-child-meta.c		\
-	$(srcdir)/clutter-click-action.c	\
 	$(srcdir)/clutter-clone.c		\
 	$(srcdir)/clutter-color.c 		\
 	$(srcdir)/clutter-colorize-effect.c	\
-	$(srcdir)/clutter-constraint.c		\
 	$(srcdir)/clutter-container.c		\
 	$(srcdir)/clutter-content.c		\
 	$(srcdir)/clutter-deform-effect.c	\
 	$(srcdir)/clutter-desaturate-effect.c	\
 	$(srcdir)/clutter-device-manager.c	\
-	$(srcdir)/clutter-drag-action.c		\
-	$(srcdir)/clutter-drop-action.c		\
 	$(srcdir)/clutter-effect.c		\
 	$(srcdir)/clutter-event.c 		\
 	$(srcdir)/clutter-feature.c 		\
 	$(srcdir)/clutter-fixed-layout.c	\
 	$(srcdir)/clutter-flatten-effect.c	\
 	$(srcdir)/clutter-flow-layout.c		\
-	$(srcdir)/clutter-gesture-action.c 	\
 	$(srcdir)/clutter-image.c		\
 	$(srcdir)/clutter-input-device.c	\
 	$(srcdir)/clutter-interval.c            \
@@ -182,7 +160,6 @@ source_c = \
 	$(srcdir)/clutter-page-turn-effect.c	\
 	$(srcdir)/clutter-paint-nodes.c		\
 	$(srcdir)/clutter-paint-node.c		\
-	$(srcdir)/clutter-path-constraint.c	\
 	$(srcdir)/clutter-path.c		\
 	$(srcdir)/clutter-property-transition.c	\
 	$(srcdir)/clutter-script.c		\
@@ -191,7 +168,6 @@ source_c = \
 	$(srcdir)/clutter-settings.c		\
 	$(srcdir)/clutter-shader-effect.c	\
 	$(srcdir)/clutter-shader-types.c	\
-	$(srcdir)/clutter-snap-constraint.c	\
 	$(srcdir)/clutter-stage.c		\
 	$(srcdir)/clutter-stage-manager.c	\
 	$(srcdir)/clutter-stage-window.c	\
@@ -242,68 +218,6 @@ source_c_priv = \
 	$(srcdir)/clutter-event-translator.c	\
 	$(srcdir)/clutter-id-pool.c 		\
 	$(srcdir)/clutter-profile.c		\
-	$(NULL)
-
-# deprecated installed headers
-deprecated_h = \
-	$(srcdir)/deprecated/clutter-actor.h			\
-	$(srcdir)/deprecated/clutter-animatable.h		\
-	$(srcdir)/deprecated/clutter-animation.h		\
-	$(srcdir)/deprecated/clutter-backend.h			\
-	$(srcdir)/deprecated/clutter-behaviour.h 		\
-	$(srcdir)/deprecated/clutter-behaviour-depth.h 		\
-	$(srcdir)/deprecated/clutter-behaviour-ellipse.h	\
-	$(srcdir)/deprecated/clutter-behaviour-opacity.h 	\
-	$(srcdir)/deprecated/clutter-behaviour-path.h 		\
-	$(srcdir)/deprecated/clutter-behaviour-rotate.h 	\
-	$(srcdir)/deprecated/clutter-behaviour-scale.h 		\
-	$(srcdir)/deprecated/clutter-box.h			\
-	$(srcdir)/deprecated/clutter-cairo-texture.h		\
-	$(srcdir)/deprecated/clutter-container.h		\
-	$(srcdir)/deprecated/clutter-fixed.h			\
-	$(srcdir)/deprecated/clutter-frame-source.h		\
-	$(srcdir)/deprecated/clutter-group.h			\
-	$(srcdir)/deprecated/clutter-keysyms.h			\
-	$(srcdir)/deprecated/clutter-main.h			\
-	$(srcdir)/deprecated/clutter-rectangle.h		\
-	$(srcdir)/deprecated/clutter-score.h 			\
-	$(srcdir)/deprecated/clutter-shader.h 			\
-	$(srcdir)/deprecated/clutter-stage-manager.h		\
-	$(srcdir)/deprecated/clutter-stage.h			\
-	$(srcdir)/deprecated/clutter-texture.h			\
-	$(srcdir)/deprecated/clutter-timeline.h 		\
-	$(srcdir)/deprecated/clutter-timeout-pool.h 		\
-	$(srcdir)/deprecated/clutter-util.h 			\
-	$(NULL)
-
-# deprecated source code
-deprecated_c = \
-	$(srcdir)/deprecated/clutter-actor-deprecated.c		\
-	$(srcdir)/deprecated/clutter-behaviour.c 		\
-	$(srcdir)/deprecated/clutter-behaviour-depth.c		\
-	$(srcdir)/deprecated/clutter-behaviour-ellipse.c	\
-	$(srcdir)/deprecated/clutter-behaviour-opacity.c	\
-	$(srcdir)/deprecated/clutter-behaviour-path.c		\
-	$(srcdir)/deprecated/clutter-behaviour-rotate.c		\
-	$(srcdir)/deprecated/clutter-behaviour-scale.c		\
-	$(srcdir)/deprecated/clutter-box.c			\
-	$(srcdir)/deprecated/clutter-fixed.c			\
-	$(srcdir)/deprecated/clutter-frame-source.c		\
-	$(srcdir)/deprecated/clutter-group.c 			\
-	$(srcdir)/deprecated/clutter-rectangle.c 		\
-	$(srcdir)/deprecated/clutter-score.c 			\
-	$(srcdir)/deprecated/clutter-shader.c 			\
-	$(srcdir)/deprecated/clutter-timeout-pool.c		\
-	$(NULL)
-
-# deprecated private headers; these should not be installed
-deprecated_h_priv = \
-	$(srcdir)/deprecated/clutter-timeout-interval.h	\
-	$(NULL)
-
-# deprecated private source code; these should not be introspected
-deprecated_c_priv = \
-	$(srcdir)/deprecated/clutter-timeout-interval.c	\
 	$(NULL)
 
 # built sources
@@ -781,8 +695,6 @@ nodist_clutter_include_HEADERS = \
 	$(top_builddir)/clutter/clutter-config.h \
 	$(built_source_h)
 
-clutter_deprecated_HEADERS = $(deprecated_h)
-
 lib_LTLIBRARIES += libclutter-@CLUTTER_API_VERSION@.la
 
 libclutter_@CLUTTER_API_VERSION@_la_LIBADD = \
@@ -802,10 +714,6 @@ libclutter_@CLUTTER_API_VERSION@_la_SOURCES = \
 	$(source_h) \
 	$(source_c_priv) \
 	$(source_h_priv) \
-	$(deprecated_c) \
-	$(deprecated_h) \
-	$(deprecated_c_priv) \
-	$(deprecated_h_priv) \
 	$(cally_sources_c) \
 	$(cally_sources_h) \
 	$(cally_sources_private) \
@@ -829,7 +737,7 @@ libclutter_@CLUTTER_API_VERSION@_la_LDFLAGS = \
 dist-hook: ../build/win32/vs9/clutter.vcproj ../build/win32/vs10/clutter.vcxproj ../build/win32/vs10/clutter.vcxproj.filters ../build/win32/gen-enums.bat
 
 ../build/win32/vs9/clutter.vcproj: $(top_srcdir)/build/win32/vs9/clutter.vcprojin
-	for F in `echo $(win32_source_c) $(cally_sources_c) $(source_c) $(source_c_priv) $(deprecated_c) $(deprecated_c_priv) $(built_source_c) | tr '/' '\\'`; do \
+	for F in `echo $(win32_source_c) $(cally_sources_c) $(source_c) $(source_c_priv) $(built_source_c) | tr '/' '\\'`; do \
 		case $$F in \
 		*.c)	echo '   <File RelativePath="..\..\..\clutter\'$$F'" />' \
 			;; \
@@ -839,7 +747,7 @@ dist-hook: ../build/win32/vs9/clutter.vcproj ../build/win32/vs10/clutter.vcxproj
 	rm clutter.sourcefiles
 
 ../build/win32/vs10/clutter.vcxproj: $(top_srcdir)/build/win32/vs10/clutter.vcxprojin
-	for F in `echo $(win32_source_c) $(cally_sources_c) $(source_c) $(source_c_priv) $(deprecated_c) $(deprecated_c_priv) $(built_source_c) | tr '/' '\\'`; do \
+	for F in `echo $(win32_source_c) $(cally_sources_c) $(source_c) $(source_c_priv) $(built_source_c) | tr '/' '\\'`; do \
 		case $$F in \
 		*.c)	echo '    <ClCompile Include="..\..\..\clutter\'$$F'" />' \
 			;; \
@@ -849,7 +757,7 @@ dist-hook: ../build/win32/vs9/clutter.vcproj ../build/win32/vs10/clutter.vcxproj
 	rm clutter.vs10.sourcefiles
 
 ../build/win32/vs10/clutter.vcxproj.filters: $(top_srcdir)/build/win32/vs10/clutter.vcxproj.filtersin
-	for F in `echo $(win32_source_c) $(cally_sources_c) $(source_c) $(source_c_priv) $(deprecated_c) $(deprecated_c_priv) $(built_source_c) | tr '/' '\\'`; do \
+	for F in `echo $(win32_source_c) $(cally_sources_c) $(source_c) $(source_c_priv) $(built_source_c) | tr '/' '\\'`; do \
 		case $$F in \
 		*.c)	echo '    <ClCompile Include="..\..\..\clutter\'$$F'"><Filter>Sources</Filter></ClCompile>' \
 			;; \
@@ -935,10 +843,8 @@ Clutter_@CLUTTER_API_VERSION_AM@_gir_VERSION = @CLUTTER_API_VERSION@
 Clutter_@CLUTTER_API_VERSION_AM@_gir_LIBS = libclutter-@CLUTTER_API_VERSION@.la
 Clutter_@CLUTTER_API_VERSION_AM@_gir_FILES = \
 	$(clutter_include_HEADERS) \
-	$(clutter_deprecated_HEADERS) \
 	$(nodist_clutter_include_HEADERS) \
 	$(source_c) \
-	$(deprecated_c) \
 	$(built_source_c)
 Clutter_@CLUTTER_API_VERSION_AM@_gir_CFLAGS = $(INCLUDES) $(CLUTTER_CFLAGS) $(AM_CPPFLAGS)
 Clutter_@CLUTTER_API_VERSION_AM@_gir_INCLUDES = GL-1.0 GObject-2.0 cairo-1.0 Cogl-1.0 CoglPango-1.0 Atk-1.0 Json-1.0
@@ -1016,8 +922,6 @@ clutter_all_c_sources = \
 	$(backend_source_c_priv) \
 	$(source_c) \
 	$(source_c_priv) \
-	$(deprecated_c) \
-	$(deprecated_c_priv) \
 	$(cally_sources_c) \
 	$(built_source_c)
 

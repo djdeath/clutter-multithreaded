@@ -421,23 +421,6 @@ typedef enum {
 } ClutterAllocationFlags;
 
 /**
- * ClutterAlignAxis:
- * @CLUTTER_ALIGN_X_AXIS: Maintain the alignment on the X axis
- * @CLUTTER_ALIGN_Y_AXIS: Maintain the alignment on the Y axis
- * @CLUTTER_ALIGN_BOTH: Maintain the alignment on both the X and Y axis
- *
- * Specifies the axis on which #ClutterAlignConstraint should maintain
- * the alignment.
- *
- * Since: 1.4
- */
-typedef enum { /*< prefix=CLUTTER_ALIGN >*/
-  CLUTTER_ALIGN_X_AXIS,
-  CLUTTER_ALIGN_Y_AXIS,
-  CLUTTER_ALIGN_BOTH
-} ClutterAlignAxis;
-
-/**
  * ClutterInterpolation:
  * @CLUTTER_INTERPOLATION_LINEAR: linear interpolation
  * @CLUTTER_INTERPOLATION_CUBIC: cubic interpolation
@@ -798,7 +781,7 @@ typedef enum {
  *
  * Since: 0.4
  */
-typedef enum 
+typedef enum
 {
   CLUTTER_FEATURE_TEXTURE_NPOT           = (1 << 2),
   CLUTTER_FEATURE_SYNC_TO_VBLANK         = (1 << 3),
