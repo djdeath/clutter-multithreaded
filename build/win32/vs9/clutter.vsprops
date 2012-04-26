@@ -195,7 +195,6 @@ copy ..\..\..\clutter\clutter-stage.h $(OutDir)\include\clutter-$(ClutterApiVers
 copy ..\..\..\clutter\clutter-stage-manager.h $(OutDir)\include\clutter-$(ClutterApiVersion)\clutter&#x0D;&#x0A;
 copy ..\..\..\clutter\clutter-stage-window.h $(OutDir)\include\clutter-$(ClutterApiVersion)\clutter&#x0D;&#x0A;
 copy ..\..\..\clutter\clutter-state.h $(OutDir)\include\clutter-$(ClutterApiVersion)\clutter&#x0D;&#x0A;
-copy ..\..\..\clutter\clutter-swipe-action.h $(OutDir)\include\clutter-$(ClutterApiVersion)\clutter&#x0D;&#x0A;
 copy ..\..\..\clutter\clutter-table-layout.h $(OutDir)\include\clutter-$(ClutterApiVersion)\clutter&#x0D;&#x0A;
 copy ..\..\..\clutter\clutter-texture.h $(OutDir)\include\clutter-$(ClutterApiVersion)\clutter&#x0D;&#x0A;
 copy ..\..\..\clutter\clutter-text.h $(OutDir)\include\clutter-$(ClutterApiVersion)\clutter&#x0D;&#x0A;

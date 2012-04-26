@@ -113,7 +113,6 @@ source_h =					\
 	$(srcdir)/clutter-settings.h		\
 	$(srcdir)/clutter-shader-effect.h	\
 	$(srcdir)/clutter-shader-types.h	\
-	$(srcdir)/clutter-swipe-action.h	\
 	$(srcdir)/clutter-snap-constraint.h	\
 	$(srcdir)/clutter-stage.h 		\
 	$(srcdir)/clutter-stage-manager.h	\
@@ -192,7 +191,6 @@ source_c = \
 	$(srcdir)/clutter-settings.c		\
 	$(srcdir)/clutter-shader-effect.c	\
 	$(srcdir)/clutter-shader-types.c	\
-	$(srcdir)/clutter-swipe-action.c	\
 	$(srcdir)/clutter-snap-constraint.c	\
 	$(srcdir)/clutter-stage.c		\
 	$(srcdir)/clutter-stage-manager.c	\
@@ -839,7 +837,7 @@ dist-hook: ../build/win32/vs9/clutter.vcproj ../build/win32/vs10/clutter.vcxproj
 	done >clutter.sourcefiles
 	$(CPP) -P - <$(top_srcdir)/build/win32/vs9/clutter.vcprojin >$@
 	rm clutter.sourcefiles
-	
+
 ../build/win32/vs10/clutter.vcxproj: $(top_srcdir)/build/win32/vs10/clutter.vcxprojin
 	for F in `echo $(win32_source_c) $(cally_sources_c) $(source_c) $(source_c_priv) $(deprecated_c) $(deprecated_c_priv) $(built_source_c) | tr '/' '\\'`; do \
 		case $$F in \
@@ -849,7 +847,7 @@ dist-hook: ../build/win32/vs9/clutter.vcproj ../build/win32/vs10/clutter.vcxproj
 	done >clutter.vs10.sourcefiles
 	$(CPP) -P - <$(top_srcdir)/build/win32/vs10/clutter.vcxprojin >$@
 	rm clutter.vs10.sourcefiles
-	
+
 ../build/win32/vs10/clutter.vcxproj.filters: $(top_srcdir)/build/win32/vs10/clutter.vcxproj.filtersin
 	for F in `echo $(win32_source_c) $(cally_sources_c) $(source_c) $(source_c_priv) $(deprecated_c) $(deprecated_c_priv) $(built_source_c) | tr '/' '\\'`; do \
 		case $$F in \

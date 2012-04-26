@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup Label="UserMacros">
     <GlibEtcInstallRoot>..\..\..\..\vs10\$(Platform)</GlibEtcInstallRoot>
@@ -236,8 +236,6 @@ copy ..\..\..\clutter\clutter-stage-manager.h $(CopyDir)\include\clutter-$(Clutt
 copy ..\..\..\clutter\clutter-stage-window.h $(CopyDir)\include\clutter-$(ClutterApiVersion)\clutter
 
 copy ..\..\..\clutter\clutter-state.h $(CopyDir)\include\clutter-$(ClutterApiVersion)\clutter
-
-copy ..\..\..\clutter\clutter-swipe-action.h $(CopyDir)\include\clutter-$(ClutterApiVersion)\clutter
 
 copy ..\..\..\clutter\clutter-table-layout.h $(CopyDir)\include\clutter-$(ClutterApiVersion)\clutter
 
