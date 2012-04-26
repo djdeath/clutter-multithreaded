@@ -35,7 +35,6 @@
 #include <gmodule.h>
 
 #define CLUTTER_DISABLE_DEPRECATION_WARNINGS
-#include "deprecated/clutter-container.h"
 
 #include "clutter-actor.h"
 #include "clutter-debug.h"
@@ -80,10 +79,10 @@ _clutter_script_get_type_from_symbol (const gchar *symbol)
 
   if (!module)
     module = g_module_open (NULL, 0);
-  
+
   if (g_module_symbol (module, symbol, (gpointer)&func))
     gtype = func ();
-  
+
   return gtype;
 }
 
@@ -99,7 +98,7 @@ _clutter_script_get_type_from_class (const gchar *name)
 
   if (G_UNLIKELY (!module))
     module = g_module_open (NULL, 0);
-  
+
   for (i = 0; name[i] != '\0'; i++)
     {
       gchar c = name[i];
@@ -137,7 +136,7 @@ _clutter_script_get_type_from_class (const gchar *name)
     }
 
   g_string_append (symbol_name, "_get_type");
-  
+
   symbol = g_string_free (symbol_name, FALSE);
 
   if (g_module_symbol (module, symbol, (gpointer)&func))
@@ -145,7 +144,7 @@ _clutter_script_get_type_from_class (const gchar *name)
       CLUTTER_NOTE (SCRIPT, "Type function: %s", symbol);
       gtype = func ();
     }
-  
+
   g_free (symbol);
 
   return gtype;
@@ -175,10 +174,10 @@ _clutter_script_enum_from_string (GType        type,
   gchar *endptr;
   gint value;
   gboolean retval = TRUE;
-  
+
   g_return_val_if_fail (G_TYPE_IS_ENUM (type), 0);
   g_return_val_if_fail (string != NULL, 0);
-  
+
   value = strtoul (string, &endptr, 0);
   if (endptr != string) /* parsed a number */
     *enum_value = value;
@@ -193,7 +192,7 @@ _clutter_script_enum_from_string (GType        type,
 	*enum_value = ev->value;
       else
         retval = FALSE;
-      
+
       g_type_class_unref (eclass);
     }
 
@@ -215,7 +214,7 @@ _clutter_script_flags_from_string (GType        type,
   g_return_val_if_fail (string != NULL, 0);
 
   ret = TRUE;
-  
+
   value = strtoul (string, &endptr, 0);
   if (endptr != string) /* parsed a number */
     *flags_value = value;
@@ -229,19 +228,19 @@ _clutter_script_flags_from_string (GType        type,
       for (value = i = j = 0; ; i++)
 	{
           gboolean eos = (flagstr[i] == '\0') ? TRUE : FALSE;
-	  
+
 	  if (!eos && flagstr[i] != '|')
 	    continue;
-	  
+
 	  flag = &flagstr[j];
 	  endptr = &flagstr[i];
-	  
+
 	  if (!eos)
 	    {
 	      flagstr[i++] = '\0';
 	      j = i;
 	    }
-	  
+
 	  /* trim spaces */
 	  for (;;)
 	    {
@@ -251,7 +250,7 @@ _clutter_script_flags_from_string (GType        type,
 
 	      flag = g_utf8_next_char (flag);
 	    }
-	  
+
 	  while (endptr > flag)
 	    {
               gunichar ch;
@@ -264,16 +263,16 @@ _clutter_script_flags_from_string (GType        type,
 
 	      endptr = prevptr;
 	    }
-	  
+
 	  if (endptr > flag)
 	    {
 	      *endptr = '\0';
 
 	      fv = g_flags_get_value_by_name (fclass, flag);
-	      
+
 	      if (!fv)
 		fv = g_flags_get_value_by_nick (fclass, flag);
-	      
+
 	      if (fv)
 		value |= fv->value;
 	      else
@@ -282,16 +281,16 @@ _clutter_script_flags_from_string (GType        type,
 		  break;
 		}
 	    }
-	  
+
 	  if (eos)
 	    {
 	      *flags_value = value;
 	      break;
 	    }
 	}
-      
+
       g_free (flagstr);
-      
+
       g_type_class_unref (fclass);
     }
 
@@ -1807,7 +1806,7 @@ apply_child_properties (ClutterScript    *script,
           continue;
         }
 
-      
+
       CLUTTER_NOTE (SCRIPT,
                     "Setting %s child property '%s' (type:%s) to "
                     "object '%s' (id:%s)",
@@ -1835,7 +1834,7 @@ static void
 add_children (ClutterScript *script,
               ObjectInfo    *oinfo)
 {
-  ClutterContainer *container = CLUTTER_CONTAINER (oinfo->object);
+  ClutterActor *container = CLUTTER_ACTOR (oinfo->object);
   GList *l, *unresolved;
 
   unresolved = NULL;
@@ -1874,7 +1873,7 @@ add_children (ClutterScript *script,
                     name,
                     g_type_name (G_OBJECT_TYPE (container)));
 
-      clutter_container_add_actor (container, CLUTTER_ACTOR (object));
+      clutter_actor_add_child (container, CLUTTER_ACTOR (object));
     }
 
   g_list_foreach (oinfo->children, (GFunc) g_free, NULL);

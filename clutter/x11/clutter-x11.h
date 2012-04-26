@@ -106,9 +106,6 @@ Window   clutter_x11_get_root_window     (void);
 XVisualInfo *clutter_x11_get_visual_info (void);
 void     clutter_x11_set_display         (Display * xdpy);
 
-CLUTTER_DEPRECATED_FOR(clutter_x11_get_visual_info)
-XVisualInfo *clutter_x11_get_stage_visual  (ClutterStage *stage);
-
 Window       clutter_x11_get_stage_window  (ClutterStage *stage);
 gboolean     clutter_x11_set_stage_foreign (ClutterStage *stage,
                                             Window        xwindow);
@@ -124,9 +121,6 @@ void     clutter_x11_disable_event_retrieval (void);
 gboolean clutter_x11_has_event_retrieval (void);
 
 ClutterStage *clutter_x11_get_stage_from_window (Window win);
-
-CLUTTER_DEPRECATED_FOR(clutter_device_manager_peek_devices)
-const GSList* clutter_x11_get_input_devices (void);
 
 void     clutter_x11_enable_xinput (void);
 gboolean clutter_x11_has_xinput (void);

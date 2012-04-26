@@ -25,7 +25,7 @@
 #ifndef __CALLY_STAGE_H__
 #define __CALLY_STAGE_H__
 
-#include <cally/cally-group.h>
+#include <cally/cally-actor.h>
 #include <clutter/clutter.h>
 
 G_BEGIN_DECLS
@@ -52,7 +52,7 @@ typedef struct _CallyStagePrivate CallyStagePrivate;
 struct _CallyStage
 {
   /*< private >*/
-  CallyGroup parent;
+  CallyActor parent;
 
   CallyStagePrivate *priv;
 };
@@ -68,7 +68,7 @@ struct _CallyStage
 struct _CallyStageClass
 {
   /*< private >*/
-  CallyGroupClass parent_class;
+  CallyActorClass parent_class;
 
   /* padding for future expansion */
   gpointer _padding_dummy[16];

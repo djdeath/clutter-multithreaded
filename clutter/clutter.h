@@ -61,7 +61,6 @@
 #include "clutter-feature.h"
 #include "clutter-fixed-layout.h"
 #include "clutter-flow-layout.h"
-#include "clutter-group.h"
 #include "clutter-image.h"
 #include "clutter-input-device.h"
 #include "clutter-interval.h"
@@ -96,8 +95,6 @@
 #include "clutter-version.h"
 
 #include "clutter-enum-types.h"
-
-#include "clutter-deprecated.h"
 
 #undef __CLUTTER_H_INSIDE__
 

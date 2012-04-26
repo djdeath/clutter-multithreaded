@@ -14,20 +14,20 @@ on_paint (ClutterActor *actor, gconstpointer *data)
 {
   static GTimer *timer = NULL;
   static int fps = 0;
-  
+
   if (!timer)
     {
       timer = g_timer_new ();
       g_timer_start (timer);
     }
-  
+
   if (g_timer_elapsed (timer, NULL) >= 1)
     {
       printf ("fps: %d\n", fps);
       g_timer_start (timer);
       fps = 0;
     }
-  
+
   ++fps;
 }
 
@@ -107,7 +107,7 @@ main (int argc, char *argv[])
           clutter_container_add_actor (CLUTTER_CONTAINER (group), label);
         }
   }
-  clutter_actor_show_all (stage);
+  clutter_actor_show (stage);
 
   g_signal_connect (stage, "key-press-event",
 		    G_CALLBACK (clutter_main_quit), NULL);

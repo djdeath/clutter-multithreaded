@@ -77,7 +77,6 @@ source_h =					\
 	$(srcdir)/clutter-feature.h 		\
 	$(srcdir)/clutter-fixed-layout.h	\
 	$(srcdir)/clutter-flow-layout.h		\
-	$(srcdir)/clutter-group.h 		\
 	$(srcdir)/clutter-image.h		\
 	$(srcdir)/clutter-input-device.h	\
         $(srcdir)/clutter-interval.h            \
@@ -634,10 +633,8 @@ cally_sources_h = \
 	$(srcdir)/cally/cally-actor.h		\
 	$(srcdir)/cally/cally-clone.h		\
 	$(srcdir)/cally/cally-factory.h		\
-	$(srcdir)/cally/cally-group.h		\
 	$(srcdir)/cally/cally.h			\
 	$(srcdir)/cally/cally-main.h		\
-	$(srcdir)/cally/cally-rectangle.h	\
 	$(srcdir)/cally/cally-root.h		\
 	$(srcdir)/cally/cally-stage.h		\
 	$(srcdir)/cally/cally-text.h		\
@@ -649,8 +646,6 @@ cally_sources_c = \
 	$(srcdir)/cally/cally-actor.c		\
 	$(srcdir)/cally/cally.c			\
 	$(srcdir)/cally/cally-clone.c		\
-	$(srcdir)/cally/cally-group.c		\
-	$(srcdir)/cally/cally-rectangle.c	\
 	$(srcdir)/cally/cally-root.c		\
 	$(srcdir)/cally/cally-stage.c		\
 	$(srcdir)/cally/cally-text.c		\

@@ -160,8 +160,6 @@
 #include "clutter-scriptable.h"
 #include "clutter-script-private.h"
 
-#include "deprecated/clutter-animation.h"
-
 enum
 {
   PROP_0,
@@ -567,27 +565,6 @@ clutter_animation_class_init (ClutterAnimationClass *klass)
                          P_("The timeline used by the animation"),
                          CLUTTER_TYPE_TIMELINE,
                          CLUTTER_PARAM_READWRITE);
-
-  /**
-   * ClutterAnimation:alpha:
-   *
-   * The #ClutterAlpha used by the animation.
-   *
-   * Since: 1.0
-   *
-   * Deprecated: 1.10: Use the #ClutterAnimation:timeline property and
-   *   the #ClutterTimeline:progress-mode property instead.
-   */
-  obj_props[PROP_ALPHA] =
-    g_param_spec_object ("alpha",
-                         P_("Alpha"),
-                         P_("The alpha used by the animation"),
-                         CLUTTER_TYPE_ALPHA,
-                         CLUTTER_PARAM_READWRITE | G_PARAM_DEPRECATED);
-
-  g_object_class_install_properties (gobject_class,
-                                     PROP_LAST,
-                                     obj_props);
 
   /**
    * ClutterAnimation::started:
@@ -1677,52 +1654,6 @@ clutter_animation_get_timeline (ClutterAnimation *animation)
 }
 
 /**
- * clutter_animation_set_alpha:
- * @animation: a #ClutterAnimation
- * @alpha: a #ClutterAlpha, or %NULL to unset the current #ClutterAlpha
- *
- * Sets @alpha as the #ClutterAlpha used by @animation.
- *
- * If @alpha is not %NULL, the #ClutterAnimation will take ownership
- * of the #ClutterAlpha instance.
- *
- * Since: 1.0
- *
- * Deprecated: 1.10: Use clutter_animation_get_timeline() and
- *   clutter_timeline_set_progress_mode() instead.
- */
-void
-clutter_animation_set_alpha (ClutterAnimation *animation,
-                             ClutterAlpha     *alpha)
-{
-  g_return_if_fail (CLUTTER_IS_ANIMATION (animation));
-  g_return_if_fail (alpha == NULL || CLUTTER_IS_ALPHA (alpha));
-
-  clutter_animation_set_alpha_internal (animation, alpha);
-}
-
-/**
- * clutter_animation_get_alpha:
- * @animation: a #ClutterAnimation
- *
- * Retrieves the #ClutterAlpha used by @animation.
- *
- * Return value: (transfer none): the alpha object used by the animation
- *
- * Since: 1.0
- *
- * Deprecated: 1.10: Use clutter_animation_get_timeline() and
- *   clutter_timeline_get_progress_mode() instead.
- */
-ClutterAlpha *
-clutter_animation_get_alpha (ClutterAnimation *animation)
-{
-  g_return_val_if_fail (CLUTTER_IS_ANIMATION (animation), NULL);
-
-  return clutter_animation_get_alpha_internal (animation);
-}
-
-/**
  * clutter_animation_completed:
  * @animation: a #ClutterAnimation
  *
@@ -2081,64 +2012,6 @@ animation_create_for_actor (ClutterActor *actor)
 }
 
 /**
- * clutter_actor_animate_with_alpha:
- * @actor: a #ClutterActor
- * @alpha: a #ClutterAlpha
- * @first_property_name: the name of a property
- * @...: a %NULL terminated list of property names and
- *   property values
- *
- * Animates the given list of properties of @actor between the current
- * value for each property and a new final value. The animation has a
- * definite behaviour given by the passed @alpha.
- *
- * See clutter_actor_animate() for further details.
- *
- * This function is useful if you want to use an existing #ClutterAlpha
- * to animate @actor.
- *
- * Return value: (transfer none): a #ClutterAnimation object. The object is owned by the
- *   #ClutterActor and should not be unreferenced with g_object_unref()
- *
- * Since: 1.0
- *
- * Deprecated: 1.10: Use clutter_actor_animate_with_timeline() instead
- */
-ClutterAnimation *
-clutter_actor_animate_with_alpha (ClutterActor *actor,
-                                  ClutterAlpha *alpha,
-                                  const gchar  *first_property_name,
-                                  ...)
-{
-  ClutterAnimation *animation;
-  ClutterTimeline *timeline;
-  va_list args;
-
-  g_return_val_if_fail (CLUTTER_IS_ACTOR (actor), NULL);
-  g_return_val_if_fail (CLUTTER_IS_ALPHA (alpha), NULL);
-  g_return_val_if_fail (first_property_name != NULL, NULL);
-
-  timeline = clutter_alpha_get_timeline (alpha);
-  if (timeline == NULL)
-    {
-      g_warning ("The passed ClutterAlpha does not have an "
-                 "associated ClutterTimeline.");
-      return NULL;
-    }
-
-  animation = animation_create_for_actor (actor);
-  clutter_animation_set_alpha_internal (animation, alpha);
-
-  va_start (args, first_property_name);
-  clutter_animation_setup_valist (animation, first_property_name, args);
-  va_end (args);
-
-  clutter_animation_start (animation);
-
-  return animation;
-}
-
-/**
  * clutter_actor_animate_with_timeline:
  * @actor: a #ClutterActor
  * @mode: an animation mode logical id
@@ -2477,69 +2350,6 @@ clutter_actor_animate_with_timelinev (ClutterActor        *actor,
   animation = animation_create_for_actor (actor);
   clutter_animation_set_mode (animation, mode);
   clutter_animation_set_timeline (animation, timeline);
-  clutter_animation_setupv (animation, n_properties, properties, values);
-  clutter_animation_start (animation);
-
-  return animation;
-}
-
-/**
- * clutter_actor_animate_with_alphav:
- * @actor: a #ClutterActor
- * @alpha: a #ClutterAlpha
- * @n_properties: number of property names and values
- * @properties: (array length=n_properties) (element-type utf8): a vector
- *    containing the property names to set
- * @values: (array length=n_properties): a vector containing the
- *    property values to set
- *
- * Animates the given list of properties of @actor between the current
- * value for each property and a new final value. The animation has a
- * definite behaviour given by the passed @alpha.
- *
- * See clutter_actor_animate() for further details.
- *
- * This function is useful if you want to use an existing #ClutterAlpha
- * to animate @actor.
- *
- * This is the vector-based variant of clutter_actor_animate_with_alpha(),
- * useful for language bindings.
- *
- * <warning>Unlike clutter_actor_animate_with_alpha(), this function will
- * not allow you to specify "signal::" names and callbacks.</warning>
- *
- * Return value: (transfer none): a #ClutterAnimation object. The object is owned by the
- *   #ClutterActor and should not be unreferenced with g_object_unref()
- *
- * Since: 1.0
- *
- * Deprecated: 1.10: Use clutter_actor_animate_with_timelinev() instead
- */
-ClutterAnimation *
-clutter_actor_animate_with_alphav (ClutterActor        *actor,
-                                   ClutterAlpha        *alpha,
-                                   gint                 n_properties,
-                                   const gchar * const  properties[],
-                                   const GValue        *values)
-{
-  ClutterAnimation *animation;
-  ClutterTimeline *timeline;
-
-  g_return_val_if_fail (CLUTTER_IS_ACTOR (actor), NULL);
-  g_return_val_if_fail (CLUTTER_IS_ALPHA (alpha), NULL);
-  g_return_val_if_fail (properties != NULL, NULL);
-  g_return_val_if_fail (values != NULL, NULL);
-
-  timeline = clutter_alpha_get_timeline (alpha);
-  if (timeline == NULL)
-    {
-      g_warning ("The passed ClutterAlpha does not have an "
-                 "associated ClutterTimeline.");
-      return NULL;
-    }
-
-  animation = animation_create_for_actor (actor);
-  clutter_animation_set_alpha_internal (animation, alpha);
   clutter_animation_setupv (animation, n_properties, properties, values);
   clutter_animation_start (animation);
 

@@ -71,10 +71,6 @@
 #include "clutter-scriptable.h"
 #include "clutter-stage-private.h"
 
-#include "deprecated/clutter-shader.h"
-#include "deprecated/clutter-texture.h"
-#include "deprecated/clutter-util.h"
-
 static void clutter_scriptable_iface_init (ClutterScriptableIface *iface);
 
 G_DEFINE_TYPE_WITH_CODE (ClutterTexture,
@@ -494,15 +490,15 @@ update_fbo (ClutterActor *self)
   CoglMatrix             projection;
   CoglColor              transparent_col;
 
-  head = _clutter_context_peek_shader_stack ();
-  if (head != NULL)
-    shader = clutter_actor_get_shader (head);
+  /* head = _clutter_context_peek_shader_stack (); */
+  /* if (head != NULL) */
+  /*   shader = clutter_actor_get_shader (head); */
 
-  /* Temporarily turn off the shader on the top of the context's
-   * shader stack, to restore the GL pipeline to it's natural state.
-   */
-  if (shader != NULL)
-    clutter_shader_set_is_enabled (shader, FALSE);
+  /* /\* Temporarily turn off the shader on the top of the context's */
+  /*  * shader stack, to restore the GL pipeline to it's natural state. */
+  /*  *\/ */
+  /* if (shader != NULL) */
+  /*   clutter_shader_set_is_enabled (shader, FALSE); */
 
   /* Redirect drawing to the fbo */
   cogl_push_framebuffer (priv->fbo_handle);
@@ -564,9 +560,9 @@ update_fbo (ClutterActor *self)
   /* Restore drawing to the previous framebuffer */
   cogl_pop_framebuffer ();
 
-  /* If there is a shader on top of the shader stack, turn it back on. */
-  if (shader != NULL)
-    clutter_shader_set_is_enabled (shader, TRUE);
+  /* /\* If there is a shader on top of the shader stack, turn it back on. *\/ */
+  /* if (shader != NULL) */
+  /*   clutter_shader_set_is_enabled (shader, TRUE); */
 }
 
 static void
@@ -1689,67 +1685,6 @@ clutter_texture_set_from_rgb_data (ClutterTexture       *texture,
 					error);
 }
 
-/**
- * clutter_texture_set_from_yuv_data:
- * @texture: A #ClutterTexture
- * @data: (array): Image data in YUV type colorspace.
- * @width: Width in pixels of image data.
- * @height: Height in pixels of image data
- * @flags: #ClutterTextureFlags
- * @error: Return location for a #GError, or %NULL.
- *
- * Sets a #ClutterTexture from YUV image data. If an error occurred,
- * %FALSE is returned and @error is set.
- *
- * The YUV support depends on the driver; the format supported by the
- * few drivers exposing this capability are not really useful.
- *
- * The proper way to convert image data in any YUV colorspace to any
- * RGB colorspace is to use a fragment shader associated with the
- * #ClutterTexture material.
- *
- * Return value: %TRUE if the texture was successfully updated
- *
- * Since: 0.4
- *
- * Deprecated: 1.10: Use clutter_texture_get_cogl_material() and
- *   the Cogl API to install a fragment shader for decoding YUV
- *   formats on the GPU
- */
-gboolean
-clutter_texture_set_from_yuv_data (ClutterTexture     *texture,
-				   const guchar       *data,
-				   gint                width,
-				   gint                height,
-				   ClutterTextureFlags flags,
-				   GError            **error)
-{
-  g_return_val_if_fail (CLUTTER_IS_TEXTURE (texture), FALSE);
-
-  if (!clutter_feature_available (CLUTTER_FEATURE_TEXTURE_YUV))
-    {
-      g_set_error (error, CLUTTER_TEXTURE_ERROR,
-                   CLUTTER_TEXTURE_ERROR_NO_YUV,
-                   _("YUV textures are not supported"));
-      return FALSE;
-    }
-
-  /* Convert the flags to a CoglPixelFormat */
-  if ((flags & CLUTTER_TEXTURE_YUV_FLAG_YUV2))
-    {
-      g_set_error (error, CLUTTER_TEXTURE_ERROR,
-		   CLUTTER_TEXTURE_ERROR_BAD_FORMAT,
-		   _("YUV2 textues are not supported"));
-      return FALSE;
-    }
-
-  return clutter_texture_set_from_data (texture, data,
-					COGL_PIXEL_FORMAT_YUV,
-					width, height,
-					width * 3, 3,
-					error);
-}
-
 /*
  * clutter_texture_async_load_complete:
  * @self: a #ClutterTexture
@@ -2458,194 +2393,6 @@ fbo_source_queue_relayout_cb (ClutterActor *source,
 			      ClutterTexture *texture)
 {
   clutter_actor_queue_relayout (CLUTTER_ACTOR (texture));
-}
-
-/**
- * clutter_texture_new_from_actor:
- * @actor: A source #ClutterActor
- *
- * Creates a new #ClutterTexture object with its source a prexisting
- * actor (and associated children). The textures content will contain
- * 'live' redirected output of the actors scene.
- *
- * Note this function is intented as a utility call for uniformly applying
- * shaders to groups and other potential visual effects. It requires that
- * the %CLUTTER_FEATURE_OFFSCREEN feature is supported by the current backend
- * and the target system.
- *
- * Some tips on usage:
- *
- * <itemizedlist>
- *   <listitem>
- *     <para>The source actor must be made visible (i.e by calling
- *     #clutter_actor_show).</para>
- *   </listitem>
- *   <listitem>
- *     <para>The source actor must have a parent in order for it to be
- *     allocated a size from the layouting mechanism. If the source
- *     actor does not have a parent when this function is called then
- *     the ClutterTexture will adopt it and allocate it at its
- *     preferred size. Using this you can clone an actor that is
- *     otherwise not displayed. Because of this feature if you do
- *     intend to display the source actor then you must make sure that
- *     the actor is parented before calling
- *     clutter_texture_new_from_actor() or that you unparent it before
- *     adding it to a container.</para>
- *   </listitem>
- *   <listitem>
- *     <para>When getting the image for the clone texture, Clutter
- *     will attempt to render the source actor exactly as it would
- *     appear if it was rendered on screen. The source actor's parent
- *     transformations are taken into account. Therefore if your
- *     source actor is rotated along the X or Y axes so that it has
- *     some depth, the texture will appear differently depending on
- *     the on-screen location of the source actor. While painting the
- *     source actor, Clutter will set up a temporary asymmetric
- *     perspective matrix as the projection matrix so that the source
- *     actor will be projected as if a small section of the screen was
- *     being viewed. Before version 0.8.2, an orthogonal identity
- *     projection was used which meant that the source actor would be
- *     clipped if any part of it was not on the zero Z-plane.</para>
- *   </listitem>
- *   <listitem>
- *     <para>Avoid reparenting the source with the created texture.</para>
- *   </listitem>
- *   <listitem>
- *     <para>A group can be padded with a transparent rectangle as to
- *     provide a border to contents for shader output (blurring text
- *     for example).</para>
- *   </listitem>
- *   <listitem>
- *     <para>The texture will automatically resize to contain a further
- *     transformed source. However, this involves overhead and can be
- *     avoided by placing the source actor in a bounding group
- *     sized large enough to contain any child tranformations.</para>
- *   </listitem>
- *   <listitem>
- *     <para>Uploading pixel data to the texture (e.g by using
- *     clutter_texture_set_from_file()) will destroy the offscreen texture
- *     data and end redirection.</para>
- *   </listitem>
- *   <listitem>
- *     <para>cogl_texture_get_data() with the handle returned by
- *     clutter_texture_get_cogl_texture() can be used to read the
- *     offscreen texture pixels into a pixbuf.</para>
- *   </listitem>
- * </itemizedlist>
- *
- * Return value: A newly created #ClutterTexture object, or %NULL on failure.
- *
- * Deprecated: 1.8: Use the #ClutterOffscreenEffect and #ClutterShaderEffect
- *   directly on the intended #ClutterActor to replace the functionality of
- *   this function.
- *
- * Since: 0.6
- */
-ClutterActor *
-clutter_texture_new_from_actor (ClutterActor *actor)
-{
-  ClutterTexture        *texture;
-  ClutterTexturePrivate *priv;
-  gfloat w, h;
-  ClutterActorBox box;
-  gboolean status;
-
-  g_return_val_if_fail (CLUTTER_IS_ACTOR (actor), NULL);
-
-  if (clutter_feature_available (CLUTTER_FEATURE_OFFSCREEN) == FALSE)
-    return NULL;
-
-  if (!CLUTTER_ACTOR_IS_REALIZED (actor))
-    {
-      clutter_actor_realize (actor);
-
-      if (!CLUTTER_ACTOR_IS_REALIZED (actor))
-	return NULL;
-    }
-
-  status = clutter_actor_get_paint_box (actor, &box);
-  if (status)
-    clutter_actor_box_get_size (&box, &w, &h);
-
-  /* In the end we will size the framebuffer according to the paint
-   * box, but for code that does:
-   *   tex = clutter_texture_new_from_actor (src);
-   *   clutter_actor_get_size (tex, &width, &height);
-   * it seems more helpfull to return the src actor size if it has a
-   * degenerate paint box. The most likely reason it will have a
-   * degenerate paint box is simply that the src currently has no
-   * parent. */
-  if (status == FALSE || w == 0 || h == 0)
-    clutter_actor_get_size (actor, &w, &h);
-
-  /* We can't create a 0x0 fbo so always bump the size up to at least
-   * 1 */
-  w = MAX (1, w);
-  h = MAX (1, h);
-
-  /* Hopefully now were good.. */
-  texture = g_object_new (CLUTTER_TYPE_TEXTURE,
-                          "disable-slicing", TRUE,
-                          NULL);
-
-  priv = texture->priv;
-
-  priv->fbo_source = g_object_ref_sink (actor);
-
-  /* If the actor doesn't have a parent then claim it so that it will
-     get a size allocation during layout */
-  if (clutter_actor_get_parent (actor) == NULL)
-    clutter_actor_add_child (CLUTTER_ACTOR (texture), actor);
-
-  /* Connect up any signals which could change our underlying size */
-  g_signal_connect (actor,
-                    "notify::width",
-                    G_CALLBACK(on_fbo_source_size_change),
-                    texture);
-  g_signal_connect (actor,
-                    "notify::height",
-                    G_CALLBACK(on_fbo_source_size_change),
-                    texture);
-  g_signal_connect (actor,
-                    "notify::scale-x",
-                    G_CALLBACK(on_fbo_source_size_change),
-                    texture);
-  g_signal_connect (actor,
-                    "notify::scale-y",
-                    G_CALLBACK(on_fbo_source_size_change),
-                    texture);
-  g_signal_connect (actor,
-                    "notify::rotation-angle-x",
-                    G_CALLBACK(on_fbo_source_size_change),
-                    texture);
-  g_signal_connect (actor,
-                    "notify::rotation-angle-y",
-                    G_CALLBACK(on_fbo_source_size_change),
-                    texture);
-  g_signal_connect (actor,
-                    "notify::rotation-angle-z",
-                    G_CALLBACK(on_fbo_source_size_change),
-                    texture);
-
-  g_signal_connect (actor, "queue-relayout",
-                    G_CALLBACK (fbo_source_queue_relayout_cb), texture);
-  g_signal_connect (actor, "queue-redraw",
-                    G_CALLBACK (fbo_source_queue_redraw_cb), texture);
-
-  /* And a warning if the source becomes a child of the texture */
-  g_signal_connect (actor,
-                    "parent-set",
-                    G_CALLBACK(on_fbo_parent_change),
-                    texture);
-
-  priv->image_width = w;
-  priv->image_height = h;
-
-  clutter_actor_set_size (CLUTTER_ACTOR (texture),
-                          priv->image_width,
-                          priv->image_height);
-
-  return CLUTTER_ACTOR (texture);
 }
 
 static void

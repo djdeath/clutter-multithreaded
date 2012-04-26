@@ -45,9 +45,7 @@
 #include "clutter-marshal.h"
 #include "clutter-debug.h"
 #include "clutter-private.h"
-#include "clutter-version.h"  
-
-#include "deprecated/clutter-stage-manager.h"
+#include "clutter-version.h"
 
 enum
 {
@@ -186,23 +184,6 @@ clutter_stage_manager_get_default (void)
     context->stage_manager = g_object_new (CLUTTER_TYPE_STAGE_MANAGER, NULL);
 
   return context->stage_manager;
-}
-
-/**
- * clutter_stage_manager_set_default_stage:
- * @stage_manager: a #ClutterStageManager
- * @stage: a #ClutterStage
- *
- * Sets @stage as the default stage.
- *
- * Since: 0.8
- *
- * Deprecated: 1.2: Calling this function has no effect
- */
-void
-clutter_stage_manager_set_default_stage (ClutterStageManager *stage_manager,
-                                         ClutterStage        *stage)
-{
 }
 
 /*< private >

@@ -476,12 +476,10 @@
 
 #include "clutter-actor-private.h"
 
-#include "clutter-action.h"
 #include "clutter-actor-meta-private.h"
 #include "clutter-animatable.h"
 #include "clutter-color-static.h"
 #include "clutter-color.h"
-#include "clutter-constraint.h"
 #include "clutter-container.h"
 #include "clutter-content-private.h"
 #include "clutter-debug.h"
@@ -3452,8 +3450,9 @@ clutter_actor_paint (ClutterActor *self)
       if (pick_mode == CLUTTER_PICK_NONE &&
           actor_has_shader_data (self))
         {
-          _clutter_actor_shader_pre_paint (self, FALSE);
-          shader_applied = TRUE;
+          /* _clutter_actor_shader_pre_paint (self, FALSE); */
+          /* shader_applied = TRUE; */
+          /* TODO_LIONEL: fix this crap */
         }
 
       priv->next_effect_to_paint = NULL;
@@ -3464,8 +3463,9 @@ clutter_actor_paint (ClutterActor *self)
 
   clutter_actor_continue_paint (self);
 
-  if (shader_applied)
-    _clutter_actor_shader_post_paint (self);
+  /* if (shader_applied) */
+  /*   _clutter_actor_shader_post_paint (self); */
+  /* TODO_LIONEL: fix this crap */
 
   if (G_UNLIKELY (clutter_paint_debug_flags & CLUTTER_DEBUG_PAINT_VOLUMES &&
                   pick_mode == CLUTTER_PICK_NONE))
@@ -4889,7 +4889,7 @@ clutter_actor_dispose (GObject *object)
        * realized and mapped states.
        */
       if (!CLUTTER_ACTOR_IS_INTERNAL_CHILD (self))
-        clutter_container_remove_actor (CLUTTER_CONTAINER (parent), self);
+        clutter_actor_remove_child (parent, self);
       else
         clutter_actor_remove_child_internal (parent, self,
                                              REMOVE_CHILD_LEGACY_FLAGS);
@@ -5219,9 +5219,7 @@ clutter_actor_class_init (ClutterActorClass *klass)
   object_class->finalize = clutter_actor_finalize;
 
   klass->show = clutter_actor_real_show;
-  klass->show_all = clutter_actor_show;
   klass->hide = clutter_actor_real_hide;
-  klass->hide_all = clutter_actor_hide;
   klass->map = clutter_actor_real_map;
   klass->unmap = clutter_actor_real_unmap;
   klass->unrealize = clutter_actor_real_unrealize;
@@ -9979,10 +9977,11 @@ clutter_actor_set_depth_internal (ClutterActor *self,
 
       self->priv->transform_valid = FALSE;
 
-      /* FIXME - remove this crap; sadly, there are still containers
-       * in Clutter that depend on this utter brain damage
-       */
-      clutter_container_sort_depth_order (CLUTTER_CONTAINER (self));
+      /* /\* FIXME - remove this crap; sadly, there are still containers */
+      /*  * in Clutter that depend on this utter brain damage */
+      /*  *\/ */
+      /* clutter_container_sort_depth_order (CLUTTER_CONTAINER (self)); */
+      /* TODO_LIONEL: fix this... */
 
       clutter_actor_queue_redraw (self);
 
@@ -11995,40 +11994,6 @@ parse_actor_metas (ClutterScript *script,
   return g_slist_reverse (retval);
 }
 
-static GSList *
-parse_behaviours (ClutterScript *script,
-                  ClutterActor  *actor,
-                  JsonNode      *node)
-{
-  GList *elements, *l;
-  GSList *retval = NULL;
-
-  if (!JSON_NODE_HOLDS_ARRAY (node))
-    return NULL;
-
-  elements = json_array_get_elements (json_node_get_array (node));
-
-  for (l = elements; l != NULL; l = l->next)
-    {
-      JsonNode *element = l->data;
-      const gchar *id_ = _clutter_script_get_id_from_node (element);
-      GObject *behaviour;
-
-      if (id_ == NULL || *id_ == '\0')
-        continue;
-
-      behaviour = clutter_script_get_object (script, id_);
-      if (behaviour == NULL)
-        continue;
-
-      retval = g_slist_prepend (retval, behaviour);
-    }
-
-  g_list_free (elements);
-
-  return g_slist_reverse (retval);
-}
-
 static gboolean
 clutter_actor_parse_custom_node (ClutterScriptable *scriptable,
                                  ClutterScript     *script,
@@ -12140,26 +12105,6 @@ clutter_actor_set_custom_property (ClutterScriptable *scriptable,
                                   info->center_z);
 
       g_slice_free (RotationInfo, info);
-
-      return;
-    }
-
-  if (strcmp (name, "behaviours") == 0)
-    {
-      GSList *behaviours, *l;
-
-      if (!G_VALUE_HOLDS (value, G_TYPE_POINTER))
-        return;
-
-      behaviours = g_value_get_pointer (value);
-      for (l = behaviours; l != NULL; l = l->next)
-        {
-          ClutterBehaviour *behaviour = l->data;
-
-          clutter_behaviour_apply (behaviour, actor);
-        }
-
-      g_slist_free (behaviours);
 
       return;
     }

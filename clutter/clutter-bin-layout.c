@@ -94,7 +94,6 @@
 #include <math.h>
 
 #define CLUTTER_DISABLE_DEPRECATION_WARNINGS
-#include "deprecated/clutter-container.h"
 
 #include "clutter-actor.h"
 #include "clutter-animatable.h"
@@ -817,7 +816,7 @@ clutter_bin_layout_add (ClutterBinLayout    *self,
       return;
     }
 
-  clutter_container_add_actor (priv->container, child);
+  clutter_actor_add_child (CLUTTER_ACTOR (priv->container), child);
 
   manager = CLUTTER_LAYOUT_MANAGER (self);
   meta = clutter_layout_manager_get_child_meta (manager,

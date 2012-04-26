@@ -108,8 +108,6 @@
 #include "clutter-private.h"
 #include "clutter-scriptable.h"
 
-#include "deprecated/clutter-timeline.h"
-
 static void clutter_scriptable_iface_init (ClutterScriptableIface *iface);
 
 G_DEFINE_TYPE_WITH_CODE (ClutterTimeline, clutter_timeline, G_TYPE_OBJECT,
@@ -1159,45 +1157,6 @@ clutter_timeline_stop (ClutterTimeline *timeline)
 }
 
 /**
- * clutter_timeline_set_loop:
- * @timeline: a #ClutterTimeline
- * @loop: %TRUE for enable looping
- *
- * Sets whether @timeline should loop.
- *
- * This function is equivalent to calling clutter_timeline_set_repeat_count()
- * with -1 if @loop is %TRUE, and with 0 if @loop is %FALSE.
- *
- * Deprecated: 1.10: Use clutter_timeline_set_repeat_count() instead.
- */
-void
-clutter_timeline_set_loop (ClutterTimeline *timeline,
-			   gboolean         loop)
-{
-  g_return_if_fail (CLUTTER_IS_TIMELINE (timeline));
-
-  clutter_timeline_set_loop_internal (timeline, loop);
-}
-
-/**
- * clutter_timeline_get_loop:
- * @timeline: a #ClutterTimeline
- *
- * Gets whether @timeline is looping
- *
- * Return value: %TRUE if the timeline is looping
- *
- * Deprecated: 1.10: Use clutter_timeline_get_repeat_count() instead.
- */
-gboolean
-clutter_timeline_get_loop (ClutterTimeline *timeline)
-{
-  g_return_val_if_fail (CLUTTER_IS_TIMELINE (timeline), FALSE);
-
-  return timeline->priv->repeat_count != 0;
-}
-
-/**
  * clutter_timeline_rewind:
  * @timeline: A #ClutterTimeline
  *
@@ -1311,44 +1270,6 @@ clutter_timeline_is_playing (ClutterTimeline *timeline)
   g_return_val_if_fail (CLUTTER_IS_TIMELINE (timeline), FALSE);
 
   return timeline->priv->is_playing;
-}
-
-/**
- * clutter_timeline_clone:
- * @timeline: #ClutterTimeline to duplicate.
- *
- * Create a new #ClutterTimeline instance which has property values
- * matching that of supplied timeline. The cloned timeline will not
- * be started and will not be positioned to the current position of
- * @timeline: you will have to start it with clutter_timeline_start().
- *
- * <note><para>The only cloned properties are:</para>
- * <itemizedlist>
- *   <listitem><simpara>#ClutterTimeline:duration</simpara></listitem>
- *   <listitem><simpara>#ClutterTimeline:loop</simpara></listitem>
- *   <listitem><simpara>#ClutterTimeline:delay</simpara></listitem>
- *   <listitem><simpara>#ClutterTimeline:direction</simpara></listitem>
- * </itemizedlist></note>
- *
- * Return value: (transfer full): a new #ClutterTimeline, cloned
- *   from @timeline
- *
- * Since: 0.4
- *
- * Deprecated: 1.10: Use clutter_timeline_new() or g_object_new()
- *   instead
- */
-ClutterTimeline *
-clutter_timeline_clone (ClutterTimeline *timeline)
-{
-  g_return_val_if_fail (CLUTTER_IS_TIMELINE (timeline), NULL);
-
-  return g_object_new (CLUTTER_TYPE_TIMELINE,
-                       "duration", timeline->priv->duration,
-                       "loop", timeline->priv->repeat_count != 0,
-                       "delay", timeline->priv->delay,
-                       "direction", timeline->priv->direction,
-                       NULL);
 }
 
 /**

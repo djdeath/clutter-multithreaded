@@ -1,4 +1,4 @@
-SUBDIRS = accessibility data interactive micro-bench performance
+SUBDIRS = data interactive micro-bench performance
 
 if BUILD_TESTS
 SUBDIRS += conform
