@@ -17,7 +17,7 @@ test_texture_material_main (int argc, char *argv[])
   g_signal_connect (stage, "destroy", G_CALLBACK (clutter_main_quit), NULL);
 
   box = clutter_actor_new ();
-  clutter_actor_set_layout_manager (box, clutter_flow_layout_new (CLUTTER_FLOW_HORIZONTAL));
+  /* clutter_actor_set_layout_manager (box, clutter_flow_layout_new (CLUTTER_FLOW_HORIZONTAL)); */
   clutter_actor_add_child (stage, box);
 
   for (i = 0; i < 48; i++)

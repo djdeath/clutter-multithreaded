@@ -523,28 +523,10 @@ typedef enum {
                               */
 } MapStateChange;
 
-/* 3 entries should be a good compromise, few layout managers
- * will ask for 3 different preferred size in each allocation cycle */
-#define N_CACHED_SIZE_REQUESTS 3
-
 struct _ClutterActorPrivate
 {
-  /* request mode */
-  ClutterRequestMode request_mode;
-
-  /* our cached size requests for different width / height */
-  SizeRequest width_requests[N_CACHED_SIZE_REQUESTS];
-  SizeRequest height_requests[N_CACHED_SIZE_REQUESTS];
-
-  /* An age of 0 means the entry is not set */
-  guint cached_height_age;
-  guint cached_width_age;
-
-  /* the bounding box of the actor, relative to the parent's
-   * allocation
-   */
-  ClutterActorBox allocation;
-  ClutterAllocationFlags allocation_flags;
+  gfloat width;
+  gfloat height;
 
   /* clip, in actor coordinates */
   cairo_rectangle_t clip;
@@ -599,17 +581,6 @@ struct _ClutterActorPrivate
   /* meta classes */
   ClutterMetaGroup *effects;
 
-  /* delegate object used to allocate the children of this actor */
-  ClutterLayoutManager *layout_manager;
-
-  /* delegate object used to paint the contents of this actor */
-  ClutterContent *content;
-
-  ClutterActorBox content_box;
-  ClutterContentGravity content_gravity;
-  ClutterScalingFilter min_filter;
-  ClutterScalingFilter mag_filter;
-
   /* used when painting, to update the paint volume */
   ClutterEffect *current_effect;
 
@@ -642,19 +613,8 @@ struct _ClutterActorPrivate
 
   /* fixed position and sizes */
   guint position_set                : 1;
-  guint min_width_set               : 1;
-  guint min_height_set              : 1;
-  guint natural_width_set           : 1;
-  guint natural_height_set          : 1;
-  /* cached request is invalid (implies allocation is too) */
-  guint needs_width_request         : 1;
-  /* cached request is invalid (implies allocation is too) */
-  guint needs_height_request        : 1;
-  /* cached allocation is invalid (request has changed, probably) */
-  guint needs_allocation            : 1;
   guint show_on_set_parent          : 1;
   guint has_clip                    : 1;
-  guint clip_to_allocation          : 1;
   guint enable_model_view_transform : 1;
   guint enable_paint_unmapped       : 1;
   guint has_pointer                 : 1;
@@ -669,7 +629,6 @@ struct _ClutterActorPrivate
      queued without an effect. */
   guint is_dirty                    : 1;
   guint bg_color_set                : 1;
-  guint content_box_valid           : 1;
 };
 
 enum
@@ -688,36 +647,10 @@ enum
   PROP_WIDTH,
   PROP_HEIGHT,
 
-  /* Then the rest of these size-related properties are the "actual"
-   * underlying properties set or gotten by X, Y, WIDTH, HEIGHT
-   */
-  PROP_FIXED_X,
-  PROP_FIXED_Y,
-
-  PROP_FIXED_POSITION_SET,
-
-  PROP_MIN_WIDTH,
-  PROP_MIN_WIDTH_SET,
-
-  PROP_MIN_HEIGHT,
-  PROP_MIN_HEIGHT_SET,
-
-  PROP_NATURAL_WIDTH,
-  PROP_NATURAL_WIDTH_SET,
-
-  PROP_NATURAL_HEIGHT,
-  PROP_NATURAL_HEIGHT_SET,
-
-  PROP_REQUEST_MODE,
-
-  /* Allocation properties are read-only */
-  PROP_ALLOCATION,
-
   PROP_DEPTH,
 
   PROP_CLIP,
   PROP_HAS_CLIP,
-  PROP_CLIP_TO_ALLOCATION,
 
   PROP_OPACITY,
 
@@ -756,26 +689,11 @@ enum
 
   PROP_EFFECT,
 
-  PROP_LAYOUT_MANAGER,
-
-  PROP_X_ALIGN,
-  PROP_Y_ALIGN,
-  PROP_MARGIN_TOP,
-  PROP_MARGIN_BOTTOM,
-  PROP_MARGIN_LEFT,
-  PROP_MARGIN_RIGHT,
-
   PROP_BACKGROUND_COLOR,
   PROP_BACKGROUND_COLOR_SET,
 
   PROP_FIRST_CHILD,
   PROP_LAST_CHILD,
-
-  PROP_CONTENT,
-  PROP_CONTENT_GRAVITY,
-  PROP_CONTENT_BOX,
-  PROP_MINIFICATION_FILTER,
-  PROP_MAGNIFICATION_FILTER,
 
   PROP_LAST
 };
@@ -806,7 +724,6 @@ enum
   MOTION_EVENT,
   ENTER_EVENT,
   LEAVE_EVENT,
-  ALLOCATION_CHANGED,
   TRANSITIONS_COMPLETED,
 
   LAST_SIGNAL
@@ -823,22 +740,6 @@ static void atk_implementor_iface_init    (AtkImplementorIface    *iface);
  * public API, but they are perhaps obscure enough to leave only as
  * properties
  */
-static void clutter_actor_set_min_width          (ClutterActor *self,
-                                                  gfloat        min_width);
-static void clutter_actor_set_min_height         (ClutterActor *self,
-                                                  gfloat        min_height);
-static void clutter_actor_set_natural_width      (ClutterActor *self,
-                                                  gfloat        natural_width);
-static void clutter_actor_set_natural_height     (ClutterActor *self,
-                                                  gfloat        natural_height);
-static void clutter_actor_set_min_width_set      (ClutterActor *self,
-                                                  gboolean      use_min_width);
-static void clutter_actor_set_min_height_set     (ClutterActor *self,
-                                                  gboolean      use_min_height);
-static void clutter_actor_set_natural_width_set  (ClutterActor *self,
-                                                  gboolean  use_natural_width);
-static void clutter_actor_set_natural_height_set (ClutterActor *self,
-                                                  gboolean  use_natural_height);
 static void clutter_actor_update_map_state       (ClutterActor  *self,
                                                   MapStateChange change);
 static void clutter_actor_unrealize_not_hiding   (ClutterActor *self);
@@ -860,8 +761,6 @@ static void           clutter_anchor_coord_set_gravity (AnchorCoord       *coord
 
 static gboolean clutter_anchor_coord_is_zero (const AnchorCoord *coord);
 
-static void _clutter_actor_queue_only_relayout (ClutterActor *self);
-
 static void _clutter_actor_get_relative_transformation_matrix (ClutterActor *self,
                                                                ClutterActor *ancestor,
                                                                CoglMatrix *matrix);
@@ -872,9 +771,6 @@ static guint8   clutter_actor_get_paint_opacity_internal        (ClutterActor *s
 
 static inline void clutter_actor_set_background_color_internal (ClutterActor *self,
                                                                 const ClutterColor *color);
-
-static void on_layout_manager_changed (ClutterLayoutManager *manager,
-                                       ClutterActor         *self);
 
 /* Helper macro which translates by the anchor coord, applies the
    given transformation and then translates back */
@@ -1412,8 +1308,6 @@ clutter_actor_real_show (ClutterActor *self)
 {
   if (!CLUTTER_ACTOR_IS_VISIBLE (self))
     {
-      ClutterActorPrivate *priv = self->priv;
-
       CLUTTER_ACTOR_SET_FLAGS (self, CLUTTER_ACTOR_VISIBLE);
 
       /* we notify on the "visible" flag in the clutter_actor_show()
@@ -1421,23 +1315,6 @@ clutter_actor_real_show (ClutterActor *self)
        * (?)
        */
       clutter_actor_update_map_state (self, MAP_STATE_CHECK);
-
-      /* we queue a relayout unless the actor is inside a
-       * container that explicitly told us not to
-       */
-      if (priv->parent != NULL &&
-          (!(priv->parent->flags & CLUTTER_ACTOR_NO_LAYOUT)))
-        {
-          /* While an actor is hidden the parent may not have
-           * allocated/requested so we need to start from scratch
-           * and avoid the short-circuiting in
-           * clutter_actor_queue_relayout().
-           */
-          priv->needs_width_request  = FALSE;
-          priv->needs_height_request = FALSE;
-          priv->needs_allocation     = FALSE;
-          clutter_actor_queue_relayout (self);
-        }
     }
 }
 
@@ -1514,8 +1391,6 @@ clutter_actor_real_hide (ClutterActor *self)
 {
   if (CLUTTER_ACTOR_IS_VISIBLE (self))
     {
-      ClutterActorPrivate *priv = self->priv;
-
       CLUTTER_ACTOR_UNSET_FLAGS (self, CLUTTER_ACTOR_VISIBLE);
 
       /* we notify on the "visible" flag in the clutter_actor_hide()
@@ -1523,13 +1398,6 @@ clutter_actor_real_hide (ClutterActor *self)
        * (?)
        */
       clutter_actor_update_map_state (self, MAP_STATE_CHECK);
-
-      /* we queue a relayout unless the actor is inside a
-       * container that explicitly told us not to
-       */
-      if (priv->parent != NULL &&
-          (!(priv->parent->flags & CLUTTER_ACTOR_NO_LAYOUT)))
-        clutter_actor_queue_relayout (priv->parent);
     }
 }
 
@@ -1843,25 +1711,19 @@ static void
 clutter_actor_real_pick (ClutterActor       *self,
 			 const ClutterColor *color)
 {
+  ClutterActorPrivate *priv = self->priv;
+
   /* the default implementation is just to paint a rectangle
    * with the same size of the actor using the passed color
    */
   if (clutter_actor_should_pick_paint (self))
     {
-      ClutterActorBox box = { 0, };
-      float width, height;
-
-      clutter_actor_get_allocation_box (self, &box);
-
-      width = box.x2 - box.x1;
-      height = box.y2 - box.y1;
-
       cogl_set_source_color4ub (color->red,
                                 color->green,
                                 color->blue,
                                 color->alpha);
 
-      cogl_rectangle (0, 0, width, height);
+      cogl_rectangle (0, 0, priv->width, priv->height);
     }
 
   /* XXX - this thoroughly sucks, but we need to maintain compatibility
@@ -1909,89 +1771,18 @@ clutter_actor_should_pick_paint (ClutterActor *self)
 }
 
 static void
-clutter_actor_real_get_preferred_width (ClutterActor *self,
-                                        gfloat        for_height,
-                                        gfloat       *min_width_p,
-                                        gfloat       *natural_width_p)
-{
-  ClutterActorPrivate *priv = self->priv;
-
-  if (priv->n_children != 0 &&
-      priv->layout_manager != NULL)
-    {
-      ClutterContainer *container = CLUTTER_CONTAINER (self);
-
-      CLUTTER_NOTE (LAYOUT, "Querying the layout manager '%s'[%p] "
-                    "for the preferred width",
-                    G_OBJECT_TYPE_NAME (priv->layout_manager),
-                    priv->layout_manager);
-
-      clutter_layout_manager_get_preferred_width (priv->layout_manager,
-                                                  container,
-                                                  for_height,
-                                                  min_width_p,
-                                                  natural_width_p);
-
-      return;
-    }
-
-  /* Default implementation is always 0x0, usually an actor
-   * using this default is relying on someone to set the
-   * request manually
-   */
-  CLUTTER_NOTE (LAYOUT, "Default preferred width: 0, 0");
-
-  if (min_width_p)
-    *min_width_p = 0;
-
-  if (natural_width_p)
-    *natural_width_p = 0;
-}
-
-static void
-clutter_actor_real_get_preferred_height (ClutterActor *self,
-                                         gfloat        for_width,
-                                         gfloat       *min_height_p,
-                                         gfloat       *natural_height_p)
-{
-  ClutterActorPrivate *priv = self->priv;
-
-  if (priv->n_children != 0 &&
-      priv->layout_manager != NULL)
-    {
-      ClutterContainer *container = CLUTTER_CONTAINER (self);
-
-      CLUTTER_NOTE (LAYOUT, "Querying the layout manager '%s'[%p] "
-                    "for the preferred height",
-                    G_OBJECT_TYPE_NAME (priv->layout_manager),
-                    priv->layout_manager);
-
-      clutter_layout_manager_get_preferred_height (priv->layout_manager,
-                                                   container,
-                                                   for_width,
-                                                   min_height_p,
-                                                   natural_height_p);
-
-      return;
-    }
-  /* Default implementation is always 0x0, usually an actor
-   * using this default is relying on someone to set the
-   * request manually
-   */
-  CLUTTER_NOTE (LAYOUT, "Default preferred height: 0, 0");
-
-  if (min_height_p)
-    *min_height_p = 0;
-
-  if (natural_height_p)
-    *natural_height_p = 0;
-}
-
-static void
 clutter_actor_store_old_geometry (ClutterActor    *self,
                                   ClutterActorBox *box)
 {
-  *box = self->priv->allocation;
+  ClutterActorPrivate *priv = self->priv;
+  const ClutterTransformInfo *info;
+
+  info = _clutter_actor_get_transform_info_or_defaults (self);
+
+  box->x1 = info->fixed_x;
+  box->y1 = info->fixed_y;
+  box->x2 = box->x1 + priv->width;
+  box->y1 = box->y1 + priv->height;
 }
 
 static inline void
@@ -2000,8 +1791,13 @@ clutter_actor_notify_if_geometry_changed (ClutterActor          *self,
 {
   ClutterActorPrivate *priv = self->priv;
   GObject *obj = G_OBJECT (self);
+  gfloat x, y;
+  gfloat width, height;
+  const ClutterTransformInfo *info;
 
   g_object_freeze_notify (obj);
+
+  info = _clutter_actor_get_transform_info_or_defaults (self);
 
   /* to avoid excessive requisition or allocation cycles we
    * use the cached values.
@@ -2014,242 +1810,24 @@ clutter_actor_notify_if_geometry_changed (ClutterActor          *self,
    *   bounding box with the current allocation and we notify
    *   the changes
    */
-  if (priv->needs_allocation)
-    {
-      g_object_notify_by_pspec (obj, obj_props[PROP_X]);
-      g_object_notify_by_pspec (obj, obj_props[PROP_Y]);
-      g_object_notify_by_pspec (obj, obj_props[PROP_WIDTH]);
-      g_object_notify_by_pspec (obj, obj_props[PROP_HEIGHT]);
-    }
-  else if (priv->needs_width_request || priv->needs_height_request)
-    {
-      g_object_notify_by_pspec (obj, obj_props[PROP_WIDTH]);
-      g_object_notify_by_pspec (obj, obj_props[PROP_HEIGHT]);
-    }
-  else
-    {
-      gfloat x, y;
-      gfloat width, height;
+  x = info->fixed_x;
+  y = info->fixed_y;
+  width = priv->width;
+  height = priv->height;
 
-      x = priv->allocation.x1;
-      y = priv->allocation.y1;
-      width = priv->allocation.x2 - priv->allocation.x1;
-      height = priv->allocation.y2 - priv->allocation.y1;
+  if (x != old->x1)
+    g_object_notify_by_pspec (obj, obj_props[PROP_X]);
 
-      if (x != old->x1)
-        g_object_notify_by_pspec (obj, obj_props[PROP_X]);
+  if (y != old->y1)
+    g_object_notify_by_pspec (obj, obj_props[PROP_Y]);
 
-      if (y != old->y1)
-        g_object_notify_by_pspec (obj, obj_props[PROP_Y]);
+  if (width != (old->x2 - old->x1))
+    g_object_notify_by_pspec (obj, obj_props[PROP_WIDTH]);
 
-      if (width != (old->x2 - old->x1))
-        g_object_notify_by_pspec (obj, obj_props[PROP_WIDTH]);
-
-      if (height != (old->y2 - old->y1))
-        g_object_notify_by_pspec (obj, obj_props[PROP_HEIGHT]);
-    }
+  if (height != (old->y2 - old->y1))
+    g_object_notify_by_pspec (obj, obj_props[PROP_HEIGHT]);
 
   g_object_thaw_notify (obj);
-}
-
-/*< private >
- * clutter_actor_set_allocation_internal:
- * @self: a #ClutterActor
- * @box: a #ClutterActorBox
- * @flags: allocation flags
- *
- * Stores the allocation of @self.
- *
- * This function only performs basic storage and property notification.
- *
- * This function should be called by clutter_actor_set_allocation()
- * and by the default implementation of #ClutterActorClass.allocate().
- *
- * Return value: %TRUE if the allocation of the #ClutterActor has been
- *   changed, and %FALSE otherwise
- */
-static inline gboolean
-clutter_actor_set_allocation_internal (ClutterActor           *self,
-                                       const ClutterActorBox  *box,
-                                       ClutterAllocationFlags  flags)
-{
-  ClutterActorPrivate *priv = self->priv;
-  GObject *obj;
-  gboolean x1_changed, y1_changed, x2_changed, y2_changed;
-  gboolean flags_changed;
-  gboolean retval;
-  ClutterActorBox old_alloc = { 0, };
-
-  obj = G_OBJECT (self);
-
-  g_object_freeze_notify (obj);
-
-  clutter_actor_store_old_geometry (self, &old_alloc);
-
-  x1_changed = priv->allocation.x1 != box->x1;
-  y1_changed = priv->allocation.y1 != box->y1;
-  x2_changed = priv->allocation.x2 != box->x2;
-  y2_changed = priv->allocation.y2 != box->y2;
-
-  flags_changed = priv->allocation_flags != flags;
-
-  priv->allocation = *box;
-  priv->allocation_flags = flags;
-
-  /* allocation is authoritative */
-  priv->needs_width_request = FALSE;
-  priv->needs_height_request = FALSE;
-  priv->needs_allocation = FALSE;
-
-  if (x1_changed || y1_changed ||
-      x2_changed || y2_changed ||
-      flags_changed)
-    {
-      CLUTTER_NOTE (LAYOUT, "Allocation for '%s' changed",
-                    _clutter_actor_get_debug_name (self));
-
-      priv->transform_valid = FALSE;
-
-      g_object_notify_by_pspec (obj, obj_props[PROP_ALLOCATION]);
-
-      /* if the allocation changes, so does the content box */
-      if (priv->content != NULL)
-        {
-          priv->content_box_valid = FALSE;
-          g_object_notify_by_pspec (obj, obj_props[PROP_CONTENT_BOX]);
-        }
-
-      retval = TRUE;
-    }
-  else
-    retval = FALSE;
-
-  clutter_actor_notify_if_geometry_changed (self, &old_alloc);
-
-  g_object_thaw_notify (obj);
-
-  return retval;
-}
-
-static void clutter_actor_real_allocate (ClutterActor           *self,
-                                         const ClutterActorBox  *box,
-                                         ClutterAllocationFlags  flags);
-
-static inline void
-clutter_actor_maybe_layout_children (ClutterActor           *self,
-                                     const ClutterActorBox  *allocation,
-                                     ClutterAllocationFlags  flags)
-{
-  ClutterActorPrivate *priv = self->priv;
-
-  /* this is going to be a bit hard to follow, so let's put an explanation
-   * here.
-   *
-   * we want ClutterActor to have a default layout manager if the actor was
-   * created using "g_object_new (CLUTTER_TYPE_ACTOR, NULL)".
-   *
-   * we also want any subclass of ClutterActor that does not override the
-   * ::allocate() virtual function to delegate to a layout manager.
-   *
-   * finally, we want to allow people subclassing ClutterActor and overriding
-   * the ::allocate() vfunc to let Clutter delegate to the layout manager.
-   *
-   * on the other hand, we want existing actor subclasses overriding the
-   * ::allocate() virtual function and chaining up to the parent's
-   * implementation to continue working without allocating their children
-   * twice, or without entering an allocation loop.
-   *
-   * for the first two points, we check if the class of the actor is
-   * overridding the ::allocate() virtual function; if it isn't, then we
-   * follow through with checking whether we have children and a layout
-   * manager, and eventually calling clutter_layout_manager_allocate().
-   *
-   * for the third point, we check the CLUTTER_DELEGATE_LAYOUT flag in the
-   * allocation flags that we got passed, and if it is present, we continue
-   * with the check above.
-   *
-   * if neither of these two checks yields a positive result, we just
-   * assume that the ::allocate() virtual function that resulted in this
-   * function being called will also allocate the children of the actor.
-   */
-
-  if (CLUTTER_ACTOR_GET_CLASS (self)->allocate == clutter_actor_real_allocate)
-    goto check_layout;
-
-  if ((flags & CLUTTER_DELEGATE_LAYOUT) != 0)
-    goto check_layout;
-
-  return;
-
-check_layout:
-  if (priv->n_children != 0 &&
-      priv->layout_manager != NULL)
-    {
-      ClutterContainer *container = CLUTTER_CONTAINER (self);
-      ClutterAllocationFlags children_flags;
-      ClutterActorBox children_box;
-
-      /* normalize the box passed to the layout manager */
-      children_box.x1 = children_box.y1 = 0.f;
-      children_box.x2 = (allocation->x2 - allocation->x1);
-      children_box.y2 = (allocation->y2 - allocation->y1);
-
-      /* remove the DELEGATE_LAYOUT flag; this won't be passed to
-       * the actor's children, since it refers only to the current
-       * actor's allocation.
-       */
-      children_flags = flags;
-      children_flags &= ~CLUTTER_DELEGATE_LAYOUT;
-
-      CLUTTER_NOTE (LAYOUT,
-                    "Allocating %d children of %s "
-                    "at { %.2f, %.2f - %.2f x %.2f } "
-                    "using %s",
-                    priv->n_children,
-                    _clutter_actor_get_debug_name (self),
-                    allocation->x1,
-                    allocation->y1,
-                    (allocation->x2 - allocation->x1),
-                    (allocation->y2 - allocation->y1),
-                    G_OBJECT_TYPE_NAME (priv->layout_manager));
-
-      clutter_layout_manager_allocate (priv->layout_manager,
-                                       container,
-                                       &children_box,
-                                       children_flags);
-    }
-}
-
-static void
-clutter_actor_real_allocate (ClutterActor           *self,
-                             const ClutterActorBox  *box,
-                             ClutterAllocationFlags  flags)
-{
-  ClutterActorPrivate *priv = self->priv;
-  gboolean changed;
-
-  g_object_freeze_notify (G_OBJECT (self));
-
-  changed = clutter_actor_set_allocation_internal (self, box, flags);
-
-  /* we allocate our children before we notify changes in our geometry,
-   * so that people connecting to properties will be able to get valid
-   * data out of the sub-tree of the scene graph that has this actor at
-   * the root.
-   */
-  clutter_actor_maybe_layout_children (self, box, flags);
-
-  if (changed)
-    {
-      ClutterActorBox signal_box = priv->allocation;
-      ClutterAllocationFlags signal_flags = priv->allocation_flags;
-
-      g_signal_emit (self, actor_signals[ALLOCATION_CHANGED], 0,
-                     &signal_box,
-                     signal_flags);
-    }
-
-  g_object_thaw_notify (G_OBJECT (self));
 }
 
 static void
@@ -2325,30 +1903,6 @@ clutter_actor_real_queue_redraw (ClutterActor *self,
       /* this will go up recursively */
       _clutter_actor_signal_queue_redraw (parent, origin);
     }
-}
-
-static void
-clutter_actor_real_queue_relayout (ClutterActor *self)
-{
-  ClutterActorPrivate *priv = self->priv;
-
-  /* no point in queueing a redraw on a destroyed actor */
-  if (CLUTTER_ACTOR_IN_DESTRUCTION (self))
-    return;
-
-  priv->needs_width_request  = TRUE;
-  priv->needs_height_request = TRUE;
-  priv->needs_allocation     = TRUE;
-
-  /* reset the cached size requests */
-  memset (priv->width_requests, 0,
-          N_CACHED_SIZE_REQUESTS * sizeof (SizeRequest));
-  memset (priv->height_requests, 0,
-          N_CACHED_SIZE_REQUESTS * sizeof (SizeRequest));
-
-  /* We need to go all the way up the hierarchy */
-  if (priv->parent != NULL)
-    _clutter_actor_queue_only_relayout (priv->parent);
 }
 
 /**
@@ -2578,35 +2132,17 @@ clutter_actor_get_allocation_vertices (ClutterActor  *self,
 
   priv = self->priv;
 
-  /* if the actor needs to be allocated we force a relayout, so that
-   * we will have valid values to use in the transformations */
-  if (priv->needs_allocation)
-    {
-      ClutterActor *stage = _clutter_actor_get_stage_internal (self);
-      if (stage)
-        _clutter_stage_maybe_relayout (stage);
-      else
-        {
-          box.x1 = box.y1 = 0;
-          /* The result isn't really meaningful in this case but at
-           * least try to do something *vaguely* reasonable... */
-          clutter_actor_get_size (self, &box.x2, &box.y2);
-        }
-    }
-
-  clutter_actor_get_allocation_box (self, &box);
-
-  vertices[0].x = box.x1;
-  vertices[0].y = box.y1;
+  vertices[0].x = 0;
+  vertices[0].y = 0;
   vertices[0].z = 0;
-  vertices[1].x = box.x2;
-  vertices[1].y = box.y1;
+  vertices[1].x = priv->width;
+  vertices[1].y = 0;
   vertices[1].z = 0;
-  vertices[2].x = box.x1;
-  vertices[2].y = box.y2;
+  vertices[2].x = 0;
+  vertices[2].y = priv->height;
   vertices[2].z = 0;
-  vertices[3].x = box.x2;
-  vertices[3].y = box.y2;
+  vertices[3].x = priv->width;
+  vertices[3].y = priv->height;
   vertices[3].z = 0;
 
   _clutter_actor_get_relative_transformation_matrix (self, ancestor,
@@ -2650,29 +2186,15 @@ clutter_actor_get_abs_allocation_vertices (ClutterActor  *self,
 
   priv = self->priv;
 
-  /* if the actor needs to be allocated we force a relayout, so that
-   * the actor allocation box will be valid for
-   * _clutter_actor_transform_and_project_box()
-   */
-  if (priv->needs_allocation)
-    {
-      ClutterActor *stage = _clutter_actor_get_stage_internal (self);
-      /* There's nothing meaningful we can do now */
-      if (!stage)
-        return;
-
-      _clutter_stage_maybe_relayout (stage);
-    }
-
   /* NB: _clutter_actor_transform_and_project_box expects a box in the actor's
    * own coordinate space... */
   actor_space_allocation.x1 = 0;
   actor_space_allocation.y1 = 0;
-  actor_space_allocation.x2 = priv->allocation.x2 - priv->allocation.x1;
-  actor_space_allocation.y2 = priv->allocation.y2 - priv->allocation.y1;
+  actor_space_allocation.x2 = priv->width;
+  actor_space_allocation.y2 = priv->height;
   _clutter_actor_transform_and_project_box (self,
-					    &actor_space_allocation,
-					    verts);
+                                           &actor_space_allocation,
+                                           verts);
 }
 
 static void
@@ -2691,8 +2213,8 @@ clutter_actor_real_apply_transform (ClutterActor *self,
       cogl_matrix_init_identity (transform);
 
       cogl_matrix_translate (transform,
-                             priv->allocation.x1,
-                             priv->allocation.y1,
+                             info->fixed_x,
+                             info->fixed_y,
                              0.0);
 
       if (info->depth)
@@ -3172,76 +2694,18 @@ clutter_actor_real_paint (ClutterActor *actor)
        iter != NULL;
        iter = iter->priv->next_sibling)
     {
+      const ClutterTransformInfo *info;
+
+      info = _clutter_actor_get_transform_info_or_defaults (actor);
+
       CLUTTER_NOTE (PAINT, "Painting %s, child of %s, at { %.2f, %.2f - %.2f x %.2f }",
                     _clutter_actor_get_debug_name (iter),
                     _clutter_actor_get_debug_name (actor),
-                    iter->priv->allocation.x1,
-                    iter->priv->allocation.y1,
-                    iter->priv->allocation.x2 - iter->priv->allocation.x1,
-                    iter->priv->allocation.y2 - iter->priv->allocation.y1);
+                    info->fixed_x, info->fixed_y,
+                    priv->width, priv->height);
 
       clutter_actor_paint (iter);
     }
-}
-
-static gboolean
-clutter_actor_paint_node (ClutterActor     *actor,
-                          ClutterPaintNode *root)
-{
-  ClutterActorPrivate *priv = actor->priv;
-
-  if (root == NULL)
-    return FALSE;
-
-  if (priv->bg_color_set &&
-      !clutter_color_equal (&priv->bg_color, CLUTTER_COLOR_Transparent))
-    {
-      ClutterPaintNode *node;
-      ClutterColor bg_color;
-      ClutterActorBox box;
-
-      box.x1 = 0.f;
-      box.y1 = 0.f;
-      box.x2 = clutter_actor_box_get_width (&priv->allocation);
-      box.y2 = clutter_actor_box_get_height (&priv->allocation);
-
-      bg_color = priv->bg_color;
-      bg_color.alpha = clutter_actor_get_paint_opacity_internal (actor)
-                     * priv->bg_color.alpha
-                     / 255;
-
-      node = clutter_color_node_new (&bg_color);
-      clutter_paint_node_set_name (node, "backgroundColor");
-      clutter_paint_node_add_rectangle (node, &box);
-      clutter_paint_node_add_child (root, node);
-      clutter_paint_node_unref (node);
-    }
-
-  if (priv->content != NULL)
-    _clutter_content_paint_content (priv->content, actor, root);
-
-  if (CLUTTER_ACTOR_GET_CLASS (actor)->paint_node != NULL)
-    CLUTTER_ACTOR_GET_CLASS (actor)->paint_node (actor, root);
-
-  if (clutter_paint_node_get_n_children (root) == 0)
-    return FALSE;
-
-#ifdef CLUTTER_ENABLE_DEBUG
-  if (CLUTTER_HAS_DEBUG (PAINT))
-    {
-      /* dump the tree only if we have one */
-      _clutter_paint_node_dump_tree (root);
-    }
-#endif /* CLUTTER_ENABLE_DEBUG */
-
-  _clutter_paint_node_paint (root);
-
-#if 0
-  /* XXX: Uncomment this when we disable emitting the paint signal */
-  CLUTTER_ACTOR_GET_CLASS (actor)->paint (actor);
-#endif
-
-  return TRUE;
 }
 
 /**
@@ -3370,16 +2834,6 @@ clutter_actor_paint (ClutterActor *self)
                                 priv->clip.y,
                                 priv->clip.x + priv->clip.width,
                                 priv->clip.y + priv->clip.height);
-      clip_set = TRUE;
-    }
-  else if (priv->clip_to_allocation)
-    {
-      gfloat width, height;
-
-      width  = priv->allocation.x2 - priv->allocation.x1;
-      height = priv->allocation.y2 - priv->allocation.y1;
-
-      cogl_clip_push_rectangle (0, 0, width, height);
       clip_set = TRUE;
     }
 
@@ -3521,22 +2975,6 @@ clutter_actor_continue_paint (ClutterActor *self)
     {
       if (_clutter_context_get_pick_mode () == CLUTTER_PICK_NONE)
         {
-          ClutterPaintNode *dummy;
-
-          /* XXX - this will go away in 2.0, when we can get rid of this
-           * stuff and switch to a pure retained render tree of PaintNodes
-           * for the entire frame, starting from the Stage; the paint()
-           * virtual function can then be called directly.
-           */
-          dummy = _clutter_dummy_node_new (self);
-          clutter_paint_node_set_name (dummy, "Root");
-
-          /* XXX - for 1.12, we use the return value of paint_node() to
-           * decide whether we should emit the ::paint signal.
-           */
-          clutter_actor_paint_node (self, dummy);
-          clutter_paint_node_unref (dummy);
-
           g_signal_emit (self, actor_signals[PAINT], 0);
         }
       else
@@ -3741,12 +3179,6 @@ clutter_actor_remove_child_internal (ClutterActor                 *self,
   if (emit_parent_set && !CLUTTER_ACTOR_IN_REPARENT (child))
     g_signal_emit (child, actor_signals[PARENT_SET], 0, self);
 
-  /* if the child was mapped then we need to relayout ourselves to account
-   * for the removed child
-   */
-  if (was_mapped)
-    clutter_actor_queue_relayout (self);
-
   /* we need to emit the signal before dropping the reference */
   if (emit_actor_removed)
     g_signal_emit_by_name (self, "actor-removed", child);
@@ -3767,6 +3199,8 @@ clutter_actor_remove_child_internal (ClutterActor                 *self,
 }
 
 static const ClutterTransformInfo default_transform_info = {
+  0.0, 0.0,             /* fixed-x fixed-y */
+
   0.0, { 0, },          /* rotation-x */
   0.0, { 0, },          /* rotation-y */
   0.0, { 0, },          /* rotation-z */
@@ -4197,54 +3631,6 @@ clutter_actor_set_property (GObject      *object,
       clutter_actor_set_height (actor, g_value_get_float (value));
       break;
 
-    case PROP_FIXED_X:
-      clutter_actor_set_x (actor, g_value_get_float (value));
-      break;
-
-    case PROP_FIXED_Y:
-      clutter_actor_set_y (actor, g_value_get_float (value));
-      break;
-
-    case PROP_FIXED_POSITION_SET:
-      clutter_actor_set_fixed_position_set (actor, g_value_get_boolean (value));
-      break;
-
-    case PROP_MIN_WIDTH:
-      clutter_actor_set_min_width (actor, g_value_get_float (value));
-      break;
-
-    case PROP_MIN_HEIGHT:
-      clutter_actor_set_min_height (actor, g_value_get_float (value));
-      break;
-
-    case PROP_NATURAL_WIDTH:
-      clutter_actor_set_natural_width (actor, g_value_get_float (value));
-      break;
-
-    case PROP_NATURAL_HEIGHT:
-      clutter_actor_set_natural_height (actor, g_value_get_float (value));
-      break;
-
-    case PROP_MIN_WIDTH_SET:
-      clutter_actor_set_min_width_set (actor, g_value_get_boolean (value));
-      break;
-
-    case PROP_MIN_HEIGHT_SET:
-      clutter_actor_set_min_height_set (actor, g_value_get_boolean (value));
-      break;
-
-    case PROP_NATURAL_WIDTH_SET:
-      clutter_actor_set_natural_width_set (actor, g_value_get_boolean (value));
-      break;
-
-    case PROP_NATURAL_HEIGHT_SET:
-      clutter_actor_set_natural_height_set (actor, g_value_get_boolean (value));
-      break;
-
-    case PROP_REQUEST_MODE:
-      clutter_actor_set_request_mode (actor, g_value_get_enum (value));
-      break;
-
     case PROP_DEPTH:
       clutter_actor_set_depth (actor, g_value_get_float (value));
       break;
@@ -4300,10 +3686,6 @@ clutter_actor_set_property (GObject      *object,
 				geom->x, geom->y,
 				geom->width, geom->height);
       }
-      break;
-
-    case PROP_CLIP_TO_ALLOCATION:
-      clutter_actor_set_clip_to_allocation (actor, g_value_get_boolean (value));
       break;
 
     case PROP_REACTIVE:
@@ -4383,56 +3765,8 @@ clutter_actor_set_property (GObject      *object,
       clutter_actor_add_effect (actor, g_value_get_object (value));
       break;
 
-    case PROP_LAYOUT_MANAGER:
-      clutter_actor_set_layout_manager (actor, g_value_get_object (value));
-      break;
-
-    case PROP_X_ALIGN:
-      clutter_actor_set_x_align (actor, g_value_get_enum (value));
-      break;
-
-    case PROP_Y_ALIGN:
-      clutter_actor_set_y_align (actor, g_value_get_enum (value));
-      break;
-
-    case PROP_MARGIN_TOP:
-      clutter_actor_set_margin_top (actor, g_value_get_float (value));
-      break;
-
-    case PROP_MARGIN_BOTTOM:
-      clutter_actor_set_margin_bottom (actor, g_value_get_float (value));
-      break;
-
-    case PROP_MARGIN_LEFT:
-      clutter_actor_set_margin_left (actor, g_value_get_float (value));
-      break;
-
-    case PROP_MARGIN_RIGHT:
-      clutter_actor_set_margin_right (actor, g_value_get_float (value));
-      break;
-
     case PROP_BACKGROUND_COLOR:
       clutter_actor_set_background_color (actor, g_value_get_boxed (value));
-      break;
-
-    case PROP_CONTENT:
-      clutter_actor_set_content (actor, g_value_get_object (value));
-      break;
-
-    case PROP_CONTENT_GRAVITY:
-      clutter_actor_set_content_gravity (actor, g_value_get_enum (value));
-      break;
-
-    case PROP_MINIFICATION_FILTER:
-      clutter_actor_set_content_scaling_filters (actor,
-                                                 g_value_get_enum (value),
-                                                 actor->priv->mag_filter);
-      break;
-
-    case PROP_MAGNIFICATION_FILTER:
-      clutter_actor_set_content_scaling_filters (actor,
-                                                 actor->priv->min_filter,
-                                                 g_value_get_enum (value));
       break;
 
     default:
@@ -4466,88 +3800,6 @@ clutter_actor_get_property (GObject    *object,
 
     case PROP_HEIGHT:
       g_value_set_float (value, clutter_actor_get_height (actor));
-      break;
-
-    case PROP_FIXED_X:
-      {
-        const ClutterLayoutInfo *info;
-
-        info = _clutter_actor_get_layout_info_or_defaults (actor);
-        g_value_set_float (value, info->fixed_x);
-      }
-      break;
-
-    case PROP_FIXED_Y:
-      {
-        const ClutterLayoutInfo *info;
-
-        info = _clutter_actor_get_layout_info_or_defaults (actor);
-        g_value_set_float (value, info->fixed_y);
-      }
-      break;
-
-    case PROP_FIXED_POSITION_SET:
-      g_value_set_boolean (value, priv->position_set);
-      break;
-
-    case PROP_MIN_WIDTH:
-      {
-        const ClutterLayoutInfo *info;
-
-        info = _clutter_actor_get_layout_info_or_defaults (actor);
-        g_value_set_float (value, info->min_width);
-      }
-      break;
-
-    case PROP_MIN_HEIGHT:
-      {
-        const ClutterLayoutInfo *info;
-
-        info = _clutter_actor_get_layout_info_or_defaults (actor);
-        g_value_set_float (value, info->min_height);
-      }
-      break;
-
-    case PROP_NATURAL_WIDTH:
-      {
-        const ClutterLayoutInfo *info;
-
-        info = _clutter_actor_get_layout_info_or_defaults (actor);
-        g_value_set_float (value, info->natural_width);
-      }
-      break;
-
-    case PROP_NATURAL_HEIGHT:
-      {
-        const ClutterLayoutInfo *info;
-
-        info = _clutter_actor_get_layout_info_or_defaults (actor);
-        g_value_set_float (value, info->natural_height);
-      }
-      break;
-
-    case PROP_MIN_WIDTH_SET:
-      g_value_set_boolean (value, priv->min_width_set);
-      break;
-
-    case PROP_MIN_HEIGHT_SET:
-      g_value_set_boolean (value, priv->min_height_set);
-      break;
-
-    case PROP_NATURAL_WIDTH_SET:
-      g_value_set_boolean (value, priv->natural_width_set);
-      break;
-
-    case PROP_NATURAL_HEIGHT_SET:
-      g_value_set_boolean (value, priv->natural_height_set);
-      break;
-
-    case PROP_REQUEST_MODE:
-      g_value_set_enum (value, priv->request_mode);
-      break;
-
-    case PROP_ALLOCATION:
-      g_value_set_boxed (value, &priv->allocation);
       break;
 
     case PROP_DEPTH:
@@ -4593,10 +3845,6 @@ clutter_actor_get_property (GObject    *object,
 
         g_value_set_boxed (value, &clip);
       }
-      break;
-
-    case PROP_CLIP_TO_ALLOCATION:
-      g_value_set_boolean (value, priv->clip_to_allocation);
       break;
 
     case PROP_SCALE_X:
@@ -4759,64 +4007,6 @@ clutter_actor_get_property (GObject    *object,
       g_value_set_boolean (value, priv->has_pointer);
       break;
 
-    case PROP_LAYOUT_MANAGER:
-      g_value_set_object (value, priv->layout_manager);
-      break;
-
-    case PROP_X_ALIGN:
-      {
-        const ClutterLayoutInfo *info;
-
-        info = _clutter_actor_get_layout_info_or_defaults (actor);
-        g_value_set_enum (value, info->x_align);
-      }
-      break;
-
-    case PROP_Y_ALIGN:
-      {
-        const ClutterLayoutInfo *info;
-
-        info = _clutter_actor_get_layout_info_or_defaults (actor);
-        g_value_set_enum (value, info->y_align);
-      }
-      break;
-
-    case PROP_MARGIN_TOP:
-      {
-        const ClutterLayoutInfo *info;
-
-        info = _clutter_actor_get_layout_info_or_defaults (actor);
-        g_value_set_float (value, info->margin.top);
-      }
-      break;
-
-    case PROP_MARGIN_BOTTOM:
-      {
-        const ClutterLayoutInfo *info;
-
-        info = _clutter_actor_get_layout_info_or_defaults (actor);
-        g_value_set_float (value, info->margin.bottom);
-      }
-      break;
-
-    case PROP_MARGIN_LEFT:
-      {
-        const ClutterLayoutInfo *info;
-
-        info = _clutter_actor_get_layout_info_or_defaults (actor);
-        g_value_set_float (value, info->margin.left);
-      }
-      break;
-
-    case PROP_MARGIN_RIGHT:
-      {
-        const ClutterLayoutInfo *info;
-
-        info = _clutter_actor_get_layout_info_or_defaults (actor);
-        g_value_set_float (value, info->margin.right);
-      }
-      break;
-
     case PROP_BACKGROUND_COLOR_SET:
       g_value_set_boolean (value, priv->bg_color_set);
       break;
@@ -4831,31 +4021,6 @@ clutter_actor_get_property (GObject    *object,
 
     case PROP_LAST_CHILD:
       g_value_set_object (value, priv->last_child);
-      break;
-
-    case PROP_CONTENT:
-      g_value_set_object (value, priv->content);
-      break;
-
-    case PROP_CONTENT_GRAVITY:
-      g_value_set_enum (value, priv->content_gravity);
-      break;
-
-    case PROP_CONTENT_BOX:
-      {
-        ClutterActorBox box = { 0, };
-
-        clutter_actor_get_content_box (actor, &box);
-        g_value_set_boxed (value, &box);
-      }
-      break;
-
-    case PROP_MINIFICATION_FILTER:
-      g_value_set_enum (value, priv->min_filter);
-      break;
-
-    case PROP_MAGNIFICATION_FILTER:
-      g_value_set_enum (value, priv->mag_filter);
       break;
 
     default:
@@ -4908,18 +4073,6 @@ clutter_actor_dispose (GObject *object)
   g_clear_object (&priv->pango_context);
   g_clear_object (&priv->effects);
   g_clear_object (&priv->flatten_effect);
-
-  if (priv->layout_manager != NULL)
-    {
-      clutter_layout_manager_set_container (priv->layout_manager, NULL);
-      g_clear_object (&priv->layout_manager);
-    }
-
-  if (priv->content != NULL)
-    {
-      _clutter_content_detached (priv->content, self);
-      g_clear_object (&priv->content);
-    }
 
   G_OBJECT_CLASS (clutter_actor_parent_class)->dispose (object);
 }
@@ -4999,72 +4152,59 @@ clutter_actor_update_default_paint_volume (ClutterActor       *self,
 {
   ClutterActorPrivate *priv = self->priv;
   gboolean res = FALSE;
+  ClutterActor *child;
 
   /* we start from the allocation */
-  clutter_paint_volume_set_width (volume,
-                                  priv->allocation.x2 - priv->allocation.x1);
-  clutter_paint_volume_set_height (volume,
-                                   priv->allocation.y2 - priv->allocation.y1);
+  clutter_paint_volume_set_width (volume, priv->width);
+  clutter_paint_volume_set_height (volume, priv->height);
 
   /* if the actor has a clip set then we have a pretty definite
    * size for the paint volume: the actor cannot possibly paint
    * outside the clip region.
    */
-  if (priv->clip_to_allocation)
+  if (priv->has_clip &&
+      priv->clip.width >= 0 &&
+      priv->clip.height >= 0)
     {
-      /* the allocation has already been set, so we just flip the
-       * return value
-       */
+      ClutterVertex origin;
+
+      origin.x = priv->clip.x;
+      origin.y = priv->clip.y;
+      origin.z = 0;
+
+      clutter_paint_volume_set_origin (volume, &origin);
+      clutter_paint_volume_set_width (volume, priv->clip.width);
+      clutter_paint_volume_set_height (volume, priv->clip.height);
+
       res = TRUE;
     }
-  else
+
+  /* if we don't have children we just bail out here... */
+  if (priv->n_children == 0)
+    return res;
+
+  /* ...but if we have children then we ask for their paint volume in
+   * our coordinates. if any of our children replies that it doesn't
+   * have a paint volume, we bail out
+   */
+  for (child  = priv->first_child;
+       child != NULL;
+       child  = child->priv->next_sibling)
     {
-      ClutterActor *child;
+      const ClutterPaintVolume *child_volume;
 
-      if (priv->has_clip &&
-          priv->clip.width >= 0 &&
-          priv->clip.height >= 0)
+      if (!CLUTTER_ACTOR_IS_MAPPED (child))
+        continue;
+
+      child_volume = clutter_actor_get_transformed_paint_volume (child, self);
+      if (child_volume == NULL)
         {
-          ClutterVertex origin;
-
-          origin.x = priv->clip.x;
-          origin.y = priv->clip.y;
-          origin.z = 0;
-
-          clutter_paint_volume_set_origin (volume, &origin);
-          clutter_paint_volume_set_width (volume, priv->clip.width);
-          clutter_paint_volume_set_height (volume, priv->clip.height);
-
-          res = TRUE;
+          res = FALSE;
+          break;
         }
 
-      /* if we don't have children we just bail out here... */
-      if (priv->n_children == 0)
-        return res;
-
-      /* ...but if we have children then we ask for their paint volume in
-       * our coordinates. if any of our children replies that it doesn't
-       * have a paint volume, we bail out
-       */
-      for (child = priv->first_child;
-           child != NULL;
-           child = child->priv->next_sibling)
-        {
-          const ClutterPaintVolume *child_volume;
-
-          if (!CLUTTER_ACTOR_IS_MAPPED (child))
-            continue;
-
-          child_volume = clutter_actor_get_transformed_paint_volume (child, self);
-          if (child_volume == NULL)
-            {
-              res = FALSE;
-              break;
-            }
-
-          clutter_paint_volume_union (volume, child_volume);
-          res = TRUE;
-        }
+      clutter_paint_volume_union (volume, child_volume);
+      res = TRUE;
     }
 
   return res;
@@ -5182,22 +4322,10 @@ clutter_actor_constructor (GType gtype,
                            GObjectConstructParam *props)
 {
   GObjectClass *gobject_class;
-  ClutterActor *self;
   GObject *retval;
 
   gobject_class = G_OBJECT_CLASS (clutter_actor_parent_class);
   retval = gobject_class->constructor (gtype, n_props, props);
-  self = CLUTTER_ACTOR (retval);
-
-  if (self->priv->layout_manager == NULL)
-    {
-      ClutterLayoutManager *default_layout;
-
-      CLUTTER_NOTE (LAYOUT, "Creating default layout manager");
-
-      default_layout = clutter_fixed_layout_new ();
-      clutter_actor_set_layout_manager (self, default_layout);
-    }
 
   return retval;
 }
@@ -5224,11 +4352,7 @@ clutter_actor_class_init (ClutterActorClass *klass)
   klass->unmap = clutter_actor_real_unmap;
   klass->unrealize = clutter_actor_real_unrealize;
   klass->pick = clutter_actor_real_pick;
-  klass->get_preferred_width = clutter_actor_real_get_preferred_width;
-  klass->get_preferred_height = clutter_actor_real_get_preferred_height;
-  klass->allocate = clutter_actor_real_allocate;
   klass->queue_redraw = clutter_actor_real_queue_redraw;
-  klass->queue_relayout = clutter_actor_real_queue_relayout;
   klass->apply_transform = clutter_actor_real_apply_transform;
   klass->get_accessible = clutter_actor_real_get_accessible;
   klass->get_paint_volume = clutter_actor_real_get_paint_volume;
@@ -5313,268 +4437,6 @@ clutter_actor_class_init (ClutterActorClass *klass)
                         G_PARAM_READWRITE |
                         G_PARAM_STATIC_STRINGS |
                         CLUTTER_PARAM_ANIMATABLE);
-
-  /**
-   * ClutterActor:fixed-x:
-   *
-   * The fixed X position of the actor in pixels.
-   *
-   * Writing this property sets #ClutterActor:fixed-position-set
-   * property as well, as a side effect
-   *
-   * Since: 0.8
-   */
-  obj_props[PROP_FIXED_X] =
-    g_param_spec_float ("fixed-x",
-                        P_("Fixed X"),
-                        P_("Forced X position of the actor"),
-                        -G_MAXFLOAT, G_MAXFLOAT,
-                        0.0,
-                        CLUTTER_PARAM_READWRITE);
-
-  /**
-   * ClutterActor:fixed-y:
-   *
-   * The fixed Y position of the actor in pixels.
-   *
-   * Writing this property sets the #ClutterActor:fixed-position-set
-   * property as well, as a side effect
-   *
-   * Since: 0.8
-   */
-  obj_props[PROP_FIXED_Y] =
-    g_param_spec_float ("fixed-y",
-                        P_("Fixed Y"),
-                        P_("Forced Y position of the actor"),
-                        -G_MAXFLOAT, G_MAXFLOAT,
-                        0,
-                        CLUTTER_PARAM_READWRITE);
-
-  /**
-   * ClutterActor:fixed-position-set:
-   *
-   * This flag controls whether the #ClutterActor:fixed-x and
-   * #ClutterActor:fixed-y properties are used
-   *
-   * Since: 0.8
-   */
-  obj_props[PROP_FIXED_POSITION_SET] =
-    g_param_spec_boolean ("fixed-position-set",
-                          P_("Fixed position set"),
-                          P_("Whether to use fixed positioning for the actor"),
-                          FALSE,
-                          CLUTTER_PARAM_READWRITE);
-
-  /**
-   * ClutterActor:min-width:
-   *
-   * A forced minimum width request for the actor, in pixels
-   *
-   * Writing this property sets the #ClutterActor:min-width-set property
-   * as well, as a side effect.
-   *
-   *This property overrides the usual width request of the actor.
-   *
-   * Since: 0.8
-   */
-  obj_props[PROP_MIN_WIDTH] =
-    g_param_spec_float ("min-width",
-                        P_("Min Width"),
-                        P_("Forced minimum width request for the actor"),
-                        0.0, G_MAXFLOAT,
-                        0.0,
-                        CLUTTER_PARAM_READWRITE);
-
-  /**
-   * ClutterActor:min-height:
-   *
-   * A forced minimum height request for the actor, in pixels
-   *
-   * Writing this property sets the #ClutterActor:min-height-set property
-   * as well, as a side effect. This property overrides the usual height
-   * request of the actor.
-   *
-   * Since: 0.8
-   */
-  obj_props[PROP_MIN_HEIGHT] =
-    g_param_spec_float ("min-height",
-                        P_("Min Height"),
-                        P_("Forced minimum height request for the actor"),
-                        0.0, G_MAXFLOAT,
-                        0.0,
-                        CLUTTER_PARAM_READWRITE);
-
-  /**
-   * ClutterActor:natural-width:
-   *
-   * A forced natural width request for the actor, in pixels
-   *
-   * Writing this property sets the #ClutterActor:natural-width-set
-   * property as well, as a side effect. This property overrides the
-   * usual width request of the actor
-   *
-   * Since: 0.8
-   */
-  obj_props[PROP_NATURAL_WIDTH] =
-    g_param_spec_float ("natural-width",
-                        P_("Natural Width"),
-                        P_("Forced natural width request for the actor"),
-                        0.0, G_MAXFLOAT,
-                        0.0,
-                        CLUTTER_PARAM_READWRITE);
-
-  /**
-   * ClutterActor:natural-height:
-   *
-   * A forced natural height request for the actor, in pixels
-   *
-   * Writing this property sets the #ClutterActor:natural-height-set
-   * property as well, as a side effect. This property overrides the
-   * usual height request of the actor
-   *
-   * Since: 0.8
-   */
-  obj_props[PROP_NATURAL_HEIGHT] =
-    g_param_spec_float ("natural-height",
-                        P_("Natural Height"),
-                        P_("Forced natural height request for the actor"),
-                        0.0, G_MAXFLOAT,
-                        0.0,
-                        CLUTTER_PARAM_READWRITE);
-
-  /**
-   * ClutterActor:min-width-set:
-   *
-   * This flag controls whether the #ClutterActor:min-width property
-   * is used
-   *
-   * Since: 0.8
-   */
-  obj_props[PROP_MIN_WIDTH_SET] =
-    g_param_spec_boolean ("min-width-set",
-                          P_("Minimum width set"),
-                          P_("Whether to use the min-width property"),
-                          FALSE,
-                          CLUTTER_PARAM_READWRITE);
-
-  /**
-   * ClutterActor:min-height-set:
-   *
-   * This flag controls whether the #ClutterActor:min-height property
-   * is used
-   *
-   * Since: 0.8
-   */
-  obj_props[PROP_MIN_HEIGHT_SET] =
-    g_param_spec_boolean ("min-height-set",
-                          P_("Minimum height set"),
-                          P_("Whether to use the min-height property"),
-                          FALSE,
-                          CLUTTER_PARAM_READWRITE);
-
-  /**
-   * ClutterActor:natural-width-set:
-   *
-   * This flag controls whether the #ClutterActor:natural-width property
-   * is used
-   *
-   * Since: 0.8
-   */
-  obj_props[PROP_NATURAL_WIDTH_SET] =
-    g_param_spec_boolean ("natural-width-set",
-                          P_("Natural width set"),
-                          P_("Whether to use the natural-width property"),
-                          FALSE,
-                          CLUTTER_PARAM_READWRITE);
-
-  /**
-   * ClutterActor:natural-height-set:
-   *
-   * This flag controls whether the #ClutterActor:natural-height property
-   * is used
-   *
-   * Since: 0.8
-   */
-  obj_props[PROP_NATURAL_HEIGHT_SET] =
-    g_param_spec_boolean ("natural-height-set",
-                          P_("Natural height set"),
-                          P_("Whether to use the natural-height property"),
-                          FALSE,
-                          CLUTTER_PARAM_READWRITE);
-
-  /**
-   * ClutterActor:allocation:
-   *
-   * The allocation for the actor, in pixels
-   *
-   * This is property is read-only, but you might monitor it to know when an
-   * actor moves or resizes
-   *
-   * Since: 0.8
-   */
-  obj_props[PROP_ALLOCATION] =
-    g_param_spec_boxed ("allocation",
-                        P_("Allocation"),
-                        P_("The actor's allocation"),
-                        CLUTTER_TYPE_ACTOR_BOX,
-                        CLUTTER_PARAM_READABLE);
-
-  /**
-   * ClutterActor:request-mode:
-   *
-   * Request mode for the #ClutterActor. The request mode determines the
-   * type of geometry management used by the actor, either height for width
-   * (the default) or width for height.
-   *
-   * For actors implementing height for width, the parent container should get
-   * the preferred width first, and then the preferred height for that width.
-   *
-   * For actors implementing width for height, the parent container should get
-   * the preferred height first, and then the preferred width for that height.
-   *
-   * For instance:
-   *
-   * |[
-   *   ClutterRequestMode mode;
-   *   gfloat natural_width, min_width;
-   *   gfloat natural_height, min_height;
-   *
-   *   mode = clutter_actor_get_request_mode (child);
-   *   if (mode == CLUTTER_REQUEST_HEIGHT_FOR_WIDTH)
-   *     {
-   *       clutter_actor_get_preferred_width (child, -1,
-   *                                          &amp;min_width,
-   *                                          &amp;natural_width);
-   *       clutter_actor_get_preferred_height (child, natural_width,
-   *                                           &amp;min_height,
-   *                                           &amp;natural_height);
-   *     }
-   *   else
-   *     {
-   *       clutter_actor_get_preferred_height (child, -1,
-   *                                           &amp;min_height,
-   *                                           &amp;natural_height);
-   *       clutter_actor_get_preferred_width (child, natural_height,
-   *                                          &amp;min_width,
-   *                                          &amp;natural_width);
-   *     }
-   * ]|
-   *
-   * will retrieve the minimum and natural width and height depending on the
-   * preferred request mode of the #ClutterActor "child".
-   *
-   * The clutter_actor_get_preferred_size() function will implement this
-   * check for you.
-   *
-   * Since: 0.8
-   */
-  obj_props[PROP_REQUEST_MODE] =
-    g_param_spec_enum ("request-mode",
-                       P_("Request Mode"),
-                       P_("The actor's request mode"),
-                       CLUTTER_TYPE_REQUEST_MODE,
-                       CLUTTER_REQUEST_HEIGHT_FOR_WIDTH,
-                       CLUTTER_PARAM_READWRITE);
 
   /**
    * ClutterActor:depth:
@@ -5997,24 +4859,6 @@ clutter_actor_class_init (ClutterActorClass *klass)
                           CLUTTER_PARAM_READWRITE);
 
   /**
-   * ClutterActor:clip-to-allocation:
-   *
-   * Whether the clip region should track the allocated area
-   * of the actor.
-   *
-   * This property is ignored if a clip area has been explicitly
-   * set using clutter_actor_set_clip().
-   *
-   * Since: 1.0
-   */
-  obj_props[PROP_CLIP_TO_ALLOCATION] =
-    g_param_spec_boolean ("clip-to-allocation",
-                          P_("Clip to Allocation"),
-                          P_("Sets the clip region to track the actor's allocation"),
-                          FALSE,
-                          CLUTTER_PARAM_READWRITE);
-
-  /**
    * ClutterActor:text-direction:
    *
    * The direction of the text inside a #ClutterActor.
@@ -6057,126 +4901,6 @@ clutter_actor_class_init (ClutterActorClass *klass)
                          P_("Add an effect to be applied on the actor"),
                          CLUTTER_TYPE_EFFECT,
                          CLUTTER_PARAM_WRITABLE);
-
-  /**
-   * ClutterActor:layout-manager:
-   *
-   * A delegate object for controlling the layout of the children of
-   * an actor.
-   *
-   * Since: 1.10
-   */
-  obj_props[PROP_LAYOUT_MANAGER] =
-    g_param_spec_object ("layout-manager",
-                         P_("Layout Manager"),
-                         P_("The object controlling the layout of an actor's children"),
-                         CLUTTER_TYPE_LAYOUT_MANAGER,
-                         CLUTTER_PARAM_READWRITE);
-
-
-  /**
-   * ClutterActor:x-align:
-   *
-   * The alignment of an actor on the X axis, if the actor has been given
-   * extra space for its allocation.
-   *
-   * Since: 1.10
-   */
-  obj_props[PROP_X_ALIGN] =
-    g_param_spec_enum ("x-align",
-                       P_("X Alignment"),
-                       P_("The alignment of the actor on the X axis within its allocation"),
-                       CLUTTER_TYPE_ACTOR_ALIGN,
-                       CLUTTER_ACTOR_ALIGN_FILL,
-                       CLUTTER_PARAM_READWRITE);
-
-  /**
-   * ClutterActor:y-align:
-   *
-   * The alignment of an actor on the Y axis, if the actor has been given
-   * extra space for its allocation.
-   *
-   * Since: 1.10
-   */
-  obj_props[PROP_Y_ALIGN] =
-    g_param_spec_enum ("y-align",
-                       P_("Y Alignment"),
-                       P_("The alignment of the actor on the Y axis within its allocation"),
-                       CLUTTER_TYPE_ACTOR_ALIGN,
-                       CLUTTER_ACTOR_ALIGN_FILL,
-                       CLUTTER_PARAM_READWRITE);
-
-  /**
-   * ClutterActor:margin-top:
-   *
-   * The margin (in pixels) from the top of the actor.
-   *
-   * This property adds a margin to the actor's preferred size; the margin
-   * will be automatically taken into account when allocating the actor.
-   *
-   * Since: 1.10
-   */
-  obj_props[PROP_MARGIN_TOP] =
-    g_param_spec_float ("margin-top",
-                        P_("Margin Top"),
-                        P_("Extra space at the top"),
-                        0.0, G_MAXFLOAT,
-                        0.0,
-                        CLUTTER_PARAM_READWRITE);
-
-  /**
-   * ClutterActor:margin-bottom:
-   *
-   * The margin (in pixels) from the bottom of the actor.
-   *
-   * This property adds a margin to the actor's preferred size; the margin
-   * will be automatically taken into account when allocating the actor.
-   *
-   * Since: 1.10
-   */
-  obj_props[PROP_MARGIN_BOTTOM] =
-    g_param_spec_float ("margin-bottom",
-                        P_("Margin Bottom"),
-                        P_("Extra space at the bottom"),
-                        0.0, G_MAXFLOAT,
-                        0.0,
-                        CLUTTER_PARAM_READWRITE);
-
-  /**
-   * ClutterActor:margin-left:
-   *
-   * The margin (in pixels) from the left of the actor.
-   *
-   * This property adds a margin to the actor's preferred size; the margin
-   * will be automatically taken into account when allocating the actor.
-   *
-   * Since: 1.10
-   */
-  obj_props[PROP_MARGIN_LEFT] =
-    g_param_spec_float ("margin-left",
-                        P_("Margin Left"),
-                        P_("Extra space at the left"),
-                        0.0, G_MAXFLOAT,
-                        0.0,
-                        CLUTTER_PARAM_READWRITE);
-
-  /**
-   * ClutterActor:margin-right:
-   *
-   * The margin (in pixels) from the right of the actor.
-   *
-   * This property adds a margin to the actor's preferred size; the margin
-   * will be automatically taken into account when allocating the actor.
-   *
-   * Since: 1.10
-   */
-  obj_props[PROP_MARGIN_RIGHT] =
-    g_param_spec_float ("margin-right",
-                        P_("Margin Right"),
-                        P_("Extra space at the right"),
-                        0.0, G_MAXFLOAT,
-                        0.0,
-                        CLUTTER_PARAM_READWRITE);
 
   /**
    * ClutterActor:background-color-set:
@@ -6238,86 +4962,6 @@ clutter_actor_class_init (ClutterActorClass *klass)
                          P_("The actor's last child"),
                          CLUTTER_TYPE_ACTOR,
                          CLUTTER_PARAM_READABLE);
-
-  /**
-   * ClutterActor:content:
-   *
-   * The #ClutterContent implementation that controls the content
-   * of the actor.
-   *
-   * Since: 1.10
-   */
-  obj_props[PROP_CONTENT] =
-    g_param_spec_object ("content",
-                         P_("Content"),
-                         P_("Delegate object for painting the actor's content"),
-                         CLUTTER_TYPE_CONTENT,
-                         CLUTTER_PARAM_READWRITE);
-
-  /**
-   * ClutterActor:content-gravity:
-   *
-   * The alignment that should be honoured by the #ClutterContent
-   * set with the #ClutterActor:content property.
-   *
-   * Changing the value of this property will change the bounding box of
-   * the content; you can use the #ClutterActor:content-box property to
-   * get the position and size of the content within the actor's
-   * allocation.
-   *
-   * This property is meaningful only for #ClutterContent implementations
-   * that have a preferred size, and if the preferred size is smaller than
-   * the actor's allocation.
-   *
-   * The #ClutterActor:content-gravity property is animatable.
-   *
-   * Since: 1.10
-   */
-  obj_props[PROP_CONTENT_GRAVITY] =
-    g_param_spec_enum ("content-gravity",
-                       P_("Content Gravity"),
-                       P_("Alignment of the actor's content"),
-                       CLUTTER_TYPE_CONTENT_GRAVITY,
-                       CLUTTER_CONTENT_GRAVITY_RESIZE_FILL,
-                       CLUTTER_PARAM_READWRITE);
-
-  /**
-   * ClutterActor:content-box:
-   *
-   * The bounding box for the #ClutterContent used by the actor.
-   *
-   * The value of this property is controlled by the #ClutterActor:allocation
-   * and #ClutterActor:content-gravity properties of #ClutterActor.
-   *
-   * The bounding box for the content is guaranteed to never exceed the
-   * allocation's of the actor.
-   *
-   * Since: 1.10
-   */
-  obj_props[PROP_CONTENT_BOX] =
-    g_param_spec_boxed ("content-box",
-                        P_("Content Box"),
-                        P_("The bounding box of the actor's content"),
-                        CLUTTER_TYPE_ACTOR_BOX,
-                        G_PARAM_READABLE |
-                        G_PARAM_STATIC_STRINGS |
-                        CLUTTER_PARAM_ANIMATABLE);
-
-  obj_props[PROP_MINIFICATION_FILTER] =
-    g_param_spec_enum ("minification-filter",
-                       P_("Minification Filter"),
-                       P_("The filter used when reducing the size of the content"),
-                       CLUTTER_TYPE_SCALING_FILTER,
-                       CLUTTER_SCALING_FILTER_LINEAR,
-                       CLUTTER_PARAM_READWRITE);
-
-  obj_props[PROP_MAGNIFICATION_FILTER] =
-    g_param_spec_enum ("magnification-filter",
-                       P_("Magnification Filter"),
-                       P_("The filter used when increasing the size of the content"),
-                       CLUTTER_TYPE_SCALING_FILTER,
-                       CLUTTER_SCALING_FILTER_LINEAR,
-                       CLUTTER_PARAM_READWRITE);
 
   g_object_class_install_properties (object_class, PROP_LAST, obj_props);
 
@@ -6465,33 +5109,6 @@ clutter_actor_class_init (ClutterActorClass *klass)
 		  _clutter_marshal_VOID__OBJECT,
 		  G_TYPE_NONE, 1,
                   CLUTTER_TYPE_ACTOR);
-
-  /**
-   * ClutterActor::queue-relayout
-   * @actor: the actor being queued for relayout
-   *
-   * The ::queue_layout signal is emitted when clutter_actor_queue_relayout()
-   * is called on an actor.
-   *
-   * The default implementation for #ClutterActor chains up to the
-   * parent actor and queues a relayout on the parent, thus "bubbling"
-   * the relayout queue up through the actor graph.
-   *
-   * The main purpose of this signal is to allow relayout to be propagated
-   * properly in the procense of #ClutterClone actors. Applications will
-   * not normally need to connect to this signal.
-   *
-   * Since: 1.2
-   */
-  actor_signals[QUEUE_RELAYOUT] =
-    g_signal_new (I_("queue-relayout"),
-		  G_TYPE_FROM_CLASS (object_class),
-		  G_SIGNAL_RUN_LAST |
-                  G_SIGNAL_NO_HOOKS,
-		  G_STRUCT_OFFSET (ClutterActorClass, queue_relayout),
-		  NULL, NULL,
-		  _clutter_marshal_VOID__VOID,
-		  G_TYPE_NONE, 0);
 
   /**
    * ClutterActor::event:
@@ -6844,32 +5461,6 @@ clutter_actor_class_init (ClutterActorClass *klass)
                   CLUTTER_TYPE_COLOR | G_SIGNAL_TYPE_STATIC_SCOPE);
 
   /**
-   * ClutterActor::allocation-changed:
-   * @actor: the #ClutterActor that emitted the signal
-   * @box: a #ClutterActorBox with the new allocation
-   * @flags: #ClutterAllocationFlags for the allocation
-   *
-   * The ::allocation-changed signal is emitted when the
-   * #ClutterActor:allocation property changes. Usually, application
-   * code should just use the notifications for the :allocation property
-   * but if you want to track the allocation flags as well, for instance
-   * to know whether the absolute origin of @actor changed, then you might
-   * want use this signal instead.
-   *
-   * Since: 1.0
-   */
-  actor_signals[ALLOCATION_CHANGED] =
-    g_signal_new (I_("allocation-changed"),
-                  G_TYPE_FROM_CLASS (object_class),
-                  G_SIGNAL_RUN_LAST,
-                  0,
-                  NULL, NULL,
-                  _clutter_marshal_VOID__BOXED_FLAGS,
-                  G_TYPE_NONE, 2,
-                  CLUTTER_TYPE_ACTOR_BOX | G_SIGNAL_TYPE_STATIC_SCOPE,
-                  CLUTTER_TYPE_ALLOCATION_FLAGS);
-
-  /**
    * ClutterActor::transitions-completed:
    * @actor: a #ClutterActor
    *
@@ -6901,13 +5492,6 @@ clutter_actor_init (ClutterActor *self)
   priv->opacity = 0xff;
   priv->show_on_set_parent = TRUE;
 
-  priv->needs_width_request = TRUE;
-  priv->needs_height_request = TRUE;
-  priv->needs_allocation = TRUE;
-
-  priv->cached_width_age = 1;
-  priv->cached_height_age = 1;
-
   priv->opacity_override = -1;
   priv->enable_model_view_transform = TRUE;
 
@@ -6916,14 +5500,6 @@ clutter_actor_init (ClutterActor *self)
   priv->last_paint_volume_valid = TRUE;
 
   priv->transform_valid = FALSE;
-
-  /* the default is to stretch the content, to match the
-   * current behaviour of basically all actors. also, it's
-   * the easiest thing to compute.
-   */
-  priv->content_gravity = CLUTTER_CONTENT_GRAVITY_RESIZE_FILL;
-  priv->min_filter = CLUTTER_SCALING_FILTER_LINEAR;
-  priv->mag_filter = CLUTTER_SCALING_FILTER_LINEAR;
 }
 
 /**
@@ -7053,32 +5629,6 @@ _clutter_actor_finish_queue_redraw (ClutterActor *self,
     _clutter_actor_set_queue_redraw_clip (self, NULL);
 }
 
-static void
-_clutter_actor_get_allocation_clip (ClutterActor *self,
-                                    ClutterActorBox *clip)
-{
-  ClutterActorBox allocation;
-
-  /* XXX: we don't care if we get an out of date allocation here
-   * because clutter_actor_queue_redraw_with_clip knows to ignore
-   * the clip if the actor's allocation is invalid.
-   *
-   * This is noted because clutter_actor_get_allocation_box does some
-   * unnecessary work to support buggy code with a comment suggesting
-   * that it could be changed later which would be good for this use
-   * case!
-   */
-  clutter_actor_get_allocation_box (self, &allocation);
-
-  /* NB: clutter_actor_queue_redraw_with_clip expects a box in the
-   * actor's own coordinate space but the allocation is in parent
-   * coordinates */
-  clip->x1 = 0;
-  clip->y1 = 0;
-  clip->x2 = allocation.x2 - allocation.x1;
-  clip->y2 = allocation.y2 - allocation.y1;
-}
-
 void
 _clutter_actor_queue_redraw_full (ClutterActor       *self,
                                   ClutterRedrawFlags  flags,
@@ -7086,9 +5636,6 @@ _clutter_actor_queue_redraw_full (ClutterActor       *self,
                                   ClutterEffect      *effect)
 {
   ClutterActorPrivate *priv = self->priv;
-  ClutterPaintVolume allocation_pv;
-  ClutterPaintVolume *pv;
-  gboolean should_free_pv;
   ClutterActor *stage;
 
   /* Here's an outline of the actor queue redraw mechanism:
@@ -7174,52 +5721,11 @@ _clutter_actor_queue_redraw_full (ClutterActor       *self,
   if (CLUTTER_ACTOR_IN_DESTRUCTION (stage))
     return;
 
-  if (flags & CLUTTER_REDRAW_CLIPPED_TO_ALLOCATION)
-    {
-      ClutterActorBox allocation_clip;
-      ClutterVertex origin;
-
-      /* If the actor doesn't have a valid allocation then we will
-       * queue a full stage redraw. */
-      if (priv->needs_allocation)
-        {
-          /* NB: NULL denotes an undefined clip which will result in a
-           * full redraw... */
-          _clutter_actor_set_queue_redraw_clip (self, NULL);
-          _clutter_actor_signal_queue_redraw (self, self);
-          return;
-        }
-
-      _clutter_paint_volume_init_static (&allocation_pv, self);
-      pv = &allocation_pv;
-
-      _clutter_actor_get_allocation_clip (self, &allocation_clip);
-
-      origin.x = allocation_clip.x1;
-      origin.y = allocation_clip.y1;
-      origin.z = 0;
-      clutter_paint_volume_set_origin (pv, &origin);
-      clutter_paint_volume_set_width (pv,
-                                      allocation_clip.x2 - allocation_clip.x1);
-      clutter_paint_volume_set_height (pv,
-                                       allocation_clip.y2 -
-                                       allocation_clip.y1);
-      should_free_pv = TRUE;
-    }
-  else
-    {
-      pv = volume;
-      should_free_pv = FALSE;
-    }
-
   self->priv->queue_redraw_entry =
     _clutter_stage_queue_actor_redraw (CLUTTER_STAGE (stage),
                                        priv->queue_redraw_entry,
                                        self,
-                                       pv);
-
-  if (should_free_pv)
-    clutter_paint_volume_free (pv);
+                                       volume);
 
   /* If this is the first redraw queued then we can directly use the
      effect parameter */
@@ -7342,32 +5848,6 @@ _clutter_actor_queue_redraw_with_clip (ClutterActor       *self,
                                     NULL /* effect */);
 }
 
-static void
-_clutter_actor_queue_only_relayout (ClutterActor *self)
-{
-  ClutterActorPrivate *priv = self->priv;
-
-  if (CLUTTER_ACTOR_IN_DESTRUCTION (self))
-    return;
-
-  if (priv->needs_width_request &&
-      priv->needs_height_request &&
-      priv->needs_allocation)
-    return; /* save some cpu cycles */
-
-#if CLUTTER_ENABLE_DEBUG
-  if (!CLUTTER_ACTOR_IS_TOPLEVEL (self) && CLUTTER_ACTOR_IN_RELAYOUT (self))
-    {
-      g_warning ("The actor '%s' is currently inside an allocation "
-                 "cycle; calling clutter_actor_queue_relayout() is "
-                 "not recommended",
-                 _clutter_actor_get_debug_name (self));
-    }
-#endif /* CLUTTER_ENABLE_DEBUG */
-
-  g_signal_emit (self, actor_signals[QUEUE_RELAYOUT], 0);
-}
-
 /**
  * clutter_actor_queue_redraw_with_clip:
  * @self: a #ClutterActor
@@ -7412,1008 +5892,6 @@ clutter_actor_queue_redraw_with_clip (ClutterActor                *self,
 }
 
 /**
- * clutter_actor_queue_relayout:
- * @self: A #ClutterActor
- *
- * Indicates that the actor's size request or other layout-affecting
- * properties may have changed. This function is used inside #ClutterActor
- * subclass implementations, not by applications directly.
- *
- * Queueing a new layout automatically queues a redraw as well.
- *
- * Since: 0.8
- */
-void
-clutter_actor_queue_relayout (ClutterActor *self)
-{
-  g_return_if_fail (CLUTTER_IS_ACTOR (self));
-
-  _clutter_actor_queue_only_relayout (self);
-  clutter_actor_queue_redraw (self);
-}
-
-/**
- * clutter_actor_get_preferred_size:
- * @self: a #ClutterActor
- * @min_width_p: (out) (allow-none): return location for the minimum
- *   width, or %NULL
- * @min_height_p: (out) (allow-none): return location for the minimum
- *   height, or %NULL
- * @natural_width_p: (out) (allow-none): return location for the natural
- *   width, or %NULL
- * @natural_height_p: (out) (allow-none): return location for the natural
- *   height, or %NULL
- *
- * Computes the preferred minimum and natural size of an actor, taking into
- * account the actor's geometry management (either height-for-width
- * or width-for-height).
- *
- * The width and height used to compute the preferred height and preferred
- * width are the actor's natural ones.
- *
- * If you need to control the height for the preferred width, or the width for
- * the preferred height, you should use clutter_actor_get_preferred_width()
- * and clutter_actor_get_preferred_height(), and check the actor's preferred
- * geometry management using the #ClutterActor:request-mode property.
- *
- * Since: 0.8
- */
-void
-clutter_actor_get_preferred_size (ClutterActor *self,
-                                  gfloat       *min_width_p,
-                                  gfloat       *min_height_p,
-                                  gfloat       *natural_width_p,
-                                  gfloat       *natural_height_p)
-{
-  ClutterActorPrivate *priv;
-  gfloat min_width, min_height;
-  gfloat natural_width, natural_height;
-
-  g_return_if_fail (CLUTTER_IS_ACTOR (self));
-
-  priv = self->priv;
-
-  min_width = min_height = 0;
-  natural_width = natural_height = 0;
-
-  if (priv->request_mode == CLUTTER_REQUEST_HEIGHT_FOR_WIDTH)
-    {
-      CLUTTER_NOTE (LAYOUT, "Preferred size (height-for-width)");
-      clutter_actor_get_preferred_width (self, -1,
-                                         &min_width,
-                                         &natural_width);
-      clutter_actor_get_preferred_height (self, natural_width,
-                                          &min_height,
-                                          &natural_height);
-    }
-  else
-    {
-      CLUTTER_NOTE (LAYOUT, "Preferred size (width-for-height)");
-      clutter_actor_get_preferred_height (self, -1,
-                                          &min_height,
-                                          &natural_height);
-      clutter_actor_get_preferred_width (self, natural_height,
-                                         &min_width,
-                                         &natural_width);
-    }
-
-  if (min_width_p)
-    *min_width_p = min_width;
-
-  if (min_height_p)
-    *min_height_p = min_height;
-
-  if (natural_width_p)
-    *natural_width_p = natural_width;
-
-  if (natural_height_p)
-    *natural_height_p = natural_height;
-}
-
-/*< private >
- * effective_align:
- * @align: a #ClutterActorAlign
- * @direction: a #ClutterTextDirection
- *
- * Retrieves the correct alignment depending on the text direction
- *
- * Return value: the effective alignment
- */
-static ClutterActorAlign
-effective_align (ClutterActorAlign    align,
-                 ClutterTextDirection direction)
-{
-  ClutterActorAlign res;
-
-  switch (align)
-    {
-    case CLUTTER_ACTOR_ALIGN_START:
-      res = (direction == CLUTTER_TEXT_DIRECTION_RTL)
-          ? CLUTTER_ACTOR_ALIGN_END
-          : CLUTTER_ACTOR_ALIGN_START;
-      break;
-
-    case CLUTTER_ACTOR_ALIGN_END:
-      res = (direction == CLUTTER_TEXT_DIRECTION_RTL)
-          ? CLUTTER_ACTOR_ALIGN_START
-          : CLUTTER_ACTOR_ALIGN_END;
-      break;
-
-    default:
-      res = align;
-      break;
-    }
-
-  return res;
-}
-
-static inline void
-adjust_for_margin (float  margin_start,
-                   float  margin_end,
-                   float *minimum_size,
-                   float *natural_size,
-                   float *allocated_start,
-                   float *allocated_end)
-{
-  *minimum_size -= (margin_start + margin_end);
-  *natural_size -= (margin_start + margin_end);
-  *allocated_start += margin_start;
-  *allocated_end -= margin_end;
-}
-
-static inline void
-adjust_for_alignment (ClutterActorAlign  alignment,
-                      float              natural_size,
-                      float             *allocated_start,
-                      float             *allocated_end)
-{
-  float allocated_size = *allocated_end - *allocated_start;
-
-  switch (alignment)
-    {
-    case CLUTTER_ACTOR_ALIGN_FILL:
-      /* do nothing */
-      break;
-
-    case CLUTTER_ACTOR_ALIGN_START:
-      /* keep start */
-      *allocated_end = *allocated_start + MIN (natural_size, allocated_size);
-      break;
-
-    case CLUTTER_ACTOR_ALIGN_END:
-      if (allocated_size > natural_size)
-        {
-          *allocated_start += (allocated_size - natural_size);
-          *allocated_end = *allocated_start + natural_size;
-        }
-      break;
-
-    case CLUTTER_ACTOR_ALIGN_CENTER:
-      if (allocated_size > natural_size)
-        {
-          *allocated_start += ceilf ((allocated_size - natural_size) / 2);
-          *allocated_end = *allocated_start + MIN (allocated_size, natural_size);
-        }
-      break;
-    }
-}
-
-/*< private >
- * clutter_actor_adjust_width:
- * @self: a #ClutterActor
- * @minimum_width: (inout): the actor's preferred minimum width, which
- *   will be adjusted depending on the margin
- * @natural_width: (inout): the actor's preferred natural width, which
- *   will be adjusted depending on the margin
- * @adjusted_x1: (out): the adjusted x1 for the actor's bounding box
- * @adjusted_x2: (out): the adjusted x2 for the actor's bounding box
- *
- * Adjusts the preferred and allocated position and size of an actor,
- * depending on the margin and alignment properties.
- */
-static void
-clutter_actor_adjust_width (ClutterActor *self,
-                            gfloat       *minimum_width,
-                            gfloat       *natural_width,
-                            gfloat       *adjusted_x1,
-                            gfloat       *adjusted_x2)
-{
-  ClutterTextDirection text_dir;
-  const ClutterLayoutInfo *info;
-
-  info = _clutter_actor_get_layout_info_or_defaults (self);
-  text_dir = clutter_actor_get_text_direction (self);
-
-  CLUTTER_NOTE (LAYOUT, "Adjusting allocated X and width");
-
-  /* this will tweak natural_width to remove the margin, so that
-   * adjust_for_alignment() will use the correct size
-   */
-  adjust_for_margin (info->margin.left, info->margin.right,
-                     minimum_width, natural_width,
-                     adjusted_x1, adjusted_x2);
-
-  adjust_for_alignment (effective_align (info->x_align, text_dir),
-                        *natural_width,
-                        adjusted_x1, adjusted_x2);
-}
-
-/*< private >
- * clutter_actor_adjust_height:
- * @self: a #ClutterActor
- * @minimum_height: (inout): the actor's preferred minimum height, which
- *   will be adjusted depending on the margin
- * @natural_height: (inout): the actor's preferred natural height, which
- *   will be adjusted depending on the margin
- * @adjusted_y1: (out): the adjusted y1 for the actor's bounding box
- * @adjusted_y2: (out): the adjusted y2 for the actor's bounding box
- *
- * Adjusts the preferred and allocated position and size of an actor,
- * depending on the margin and alignment properties.
- */
-static void
-clutter_actor_adjust_height (ClutterActor *self,
-                             gfloat       *minimum_height,
-                             gfloat       *natural_height,
-                             gfloat       *adjusted_y1,
-                             gfloat       *adjusted_y2)
-{
-  const ClutterLayoutInfo *info;
-
-  info = _clutter_actor_get_layout_info_or_defaults (self);
-
-  CLUTTER_NOTE (LAYOUT, "Adjusting allocated Y and height");
-
-  /* this will tweak natural_height to remove the margin, so that
-   * adjust_for_alignment() will use the correct size
-   */
-  adjust_for_margin (info->margin.top, info->margin.bottom,
-                     minimum_height, natural_height,
-                     adjusted_y1,
-                     adjusted_y2);
-
-  /* we don't use effective_align() here, because text direction
-   * only affects the horizontal axis
-   */
-  adjust_for_alignment (info->y_align,
-                        *natural_height,
-                        adjusted_y1,
-                        adjusted_y2);
-
-}
-
-/* looks for a cached size request for this for_size. If not
- * found, returns the oldest entry so it can be overwritten */
-static gboolean
-_clutter_actor_get_cached_size_request (gfloat         for_size,
-                                        SizeRequest   *cached_size_requests,
-                                        SizeRequest  **result)
-{
-  guint i;
-
-  *result = &cached_size_requests[0];
-
-  for (i = 0; i < N_CACHED_SIZE_REQUESTS; i++)
-    {
-      SizeRequest *sr;
-
-      sr = &cached_size_requests[i];
-
-      if (sr->age > 0 &&
-          sr->for_size == for_size)
-        {
-          CLUTTER_NOTE (LAYOUT, "Size cache hit for size: %.2f", for_size);
-          *result = sr;
-          return TRUE;
-        }
-      else if (sr->age < (*result)->age)
-        {
-          *result = sr;
-        }
-    }
-
-  CLUTTER_NOTE (LAYOUT, "Size cache miss for size: %.2f", for_size);
-
-  return FALSE;
-}
-
-/**
- * clutter_actor_get_preferred_width:
- * @self: A #ClutterActor
- * @for_height: available height when computing the preferred width,
- *   or a negative value to indicate that no height is defined
- * @min_width_p: (out) (allow-none): return location for minimum width,
- *   or %NULL
- * @natural_width_p: (out) (allow-none): return location for the natural
- *   width, or %NULL
- *
- * Computes the requested minimum and natural widths for an actor,
- * optionally depending on the specified height, or if they are
- * already computed, returns the cached values.
- *
- * An actor may not get its request - depending on the layout
- * manager that's in effect.
- *
- * A request should not incorporate the actor's scale or anchor point;
- * those transformations do not affect layout, only rendering.
- *
- * Since: 0.8
- */
-void
-clutter_actor_get_preferred_width (ClutterActor *self,
-                                   gfloat        for_height,
-                                   gfloat       *min_width_p,
-                                   gfloat       *natural_width_p)
-{
-  float request_min_width, request_natural_width;
-  SizeRequest *cached_size_request;
-  const ClutterLayoutInfo *info;
-  ClutterActorPrivate *priv;
-  gboolean found_in_cache;
-
-  g_return_if_fail (CLUTTER_IS_ACTOR (self));
-
-  priv = self->priv;
-
-  info = _clutter_actor_get_layout_info_or_defaults (self);
-
-  /* we shortcircuit the case of a fixed size set using set_width() */
-  if (priv->min_width_set && priv->natural_width_set)
-    {
-      if (min_width_p != NULL)
-        *min_width_p = info->min_width + (info->margin.left + info->margin.right);
-
-      if (natural_width_p != NULL)
-        *natural_width_p = info->natural_width + (info->margin.left + info->margin.right);
-
-      return;
-    }
-
-  /* the remaining cases are:
-   *
-   *   - either min_width or natural_width have been set
-   *   - neither min_width or natural_width have been set
-   *
-   * in both cases, we go through the cache (and through the actor in case
-   * of cache misses) and determine the authoritative value depending on
-   * the *_set flags.
-   */
-
-  if (!priv->needs_width_request)
-    {
-      found_in_cache =
-        _clutter_actor_get_cached_size_request (for_height,
-                                                priv->width_requests,
-                                                &cached_size_request);
-    }
-  else
-    {
-      /* if the actor needs a width request we use the first slot */
-      found_in_cache = FALSE;
-      cached_size_request = &priv->width_requests[0];
-    }
-
-  if (!found_in_cache)
-    {
-      gfloat minimum_width, natural_width;
-      ClutterActorClass *klass;
-
-      minimum_width = natural_width = 0;
-
-      /* adjust for the margin */
-      if (for_height >= 0)
-        {
-          for_height -= (info->margin.top + info->margin.bottom);
-          if (for_height < 0)
-            for_height = 0;
-        }
-
-      CLUTTER_NOTE (LAYOUT, "Width request for %.2f px", for_height);
-
-      klass = CLUTTER_ACTOR_GET_CLASS (self);
-      klass->get_preferred_width (self, for_height,
-                                  &minimum_width,
-                                  &natural_width);
-
-      /* adjust for the margin */
-      minimum_width += (info->margin.left + info->margin.right);
-      natural_width += (info->margin.left + info->margin.right);
-
-      /* Due to accumulated float errors, it's better not to warn
-       * on this, but just fix it.
-       */
-      if (natural_width < minimum_width)
-	natural_width = minimum_width;
-
-      cached_size_request->min_size = minimum_width;
-      cached_size_request->natural_size = natural_width;
-      cached_size_request->for_size = for_height;
-      cached_size_request->age = priv->cached_width_age;
-
-      priv->cached_width_age += 1;
-      priv->needs_width_request = FALSE;
-    }
-
-  if (!priv->min_width_set)
-    request_min_width = cached_size_request->min_size;
-  else
-    request_min_width = info->min_width;
-
-  if (!priv->natural_width_set)
-    request_natural_width = cached_size_request->natural_size;
-  else
-    request_natural_width = info->natural_width;
-
-  if (min_width_p)
-    *min_width_p = request_min_width;
-
-  if (natural_width_p)
-    *natural_width_p = request_natural_width;
-}
-
-/**
- * clutter_actor_get_preferred_height:
- * @self: A #ClutterActor
- * @for_width: available width to assume in computing desired height,
- *   or a negative value to indicate that no width is defined
- * @min_height_p: (out) (allow-none): return location for minimum height,
- *   or %NULL
- * @natural_height_p: (out) (allow-none): return location for natural
- *   height, or %NULL
- *
- * Computes the requested minimum and natural heights for an actor,
- * or if they are already computed, returns the cached values.
- *
- * An actor may not get its request - depending on the layout
- * manager that's in effect.
- *
- * A request should not incorporate the actor's scale or anchor point;
- * those transformations do not affect layout, only rendering.
- *
- * Since: 0.8
- */
-void
-clutter_actor_get_preferred_height (ClutterActor *self,
-                                    gfloat        for_width,
-                                    gfloat       *min_height_p,
-                                    gfloat       *natural_height_p)
-{
-  float request_min_height, request_natural_height;
-  SizeRequest *cached_size_request;
-  const ClutterLayoutInfo *info;
-  ClutterActorPrivate *priv;
-  gboolean found_in_cache;
-
-  g_return_if_fail (CLUTTER_IS_ACTOR (self));
-
-  priv = self->priv;
-
-  info = _clutter_actor_get_layout_info_or_defaults (self);
-
-  /* we shortcircuit the case of a fixed size set using set_height() */
-  if (priv->min_height_set && priv->natural_height_set)
-    {
-      if (min_height_p != NULL)
-        *min_height_p = info->min_height + (info->margin.top + info->margin.bottom);
-
-      if (natural_height_p != NULL)
-        *natural_height_p = info->natural_height + (info->margin.top + info->margin.bottom);
-
-      return;
-    }
-
-  /* the remaining cases are:
-   *
-   *   - either min_height or natural_height have been set
-   *   - neither min_height or natural_height have been set
-   *
-   * in both cases, we go through the cache (and through the actor in case
-   * of cache misses) and determine the authoritative value depending on
-   * the *_set flags.
-   */
-
-  if (!priv->needs_height_request)
-    {
-      found_in_cache =
-        _clutter_actor_get_cached_size_request (for_width,
-                                                priv->height_requests,
-                                                &cached_size_request);
-    }
-  else
-    {
-      found_in_cache = FALSE;
-      cached_size_request = &priv->height_requests[0];
-    }
-
-  if (!found_in_cache)
-    {
-      gfloat minimum_height, natural_height;
-      ClutterActorClass *klass;
-
-      minimum_height = natural_height = 0;
-
-      CLUTTER_NOTE (LAYOUT, "Height request for %.2f px", for_width);
-
-      /* adjust for margin */
-      if (for_width >= 0)
-        {
-          for_width -= (info->margin.left + info->margin.right);
-          if (for_width < 0)
-            for_width = 0;
-        }
-
-      klass = CLUTTER_ACTOR_GET_CLASS (self);
-      klass->get_preferred_height (self, for_width,
-                                   &minimum_height,
-                                   &natural_height);
-
-      /* adjust for margin */
-      minimum_height += (info->margin.top + info->margin.bottom);
-      natural_height += (info->margin.top + info->margin.bottom);
-
-      /* Due to accumulated float errors, it's better not to warn
-       * on this, but just fix it.
-       */
-      if (natural_height < minimum_height)
-	natural_height = minimum_height;
-
-      cached_size_request->min_size = minimum_height;
-      cached_size_request->natural_size = natural_height;
-      cached_size_request->for_size = for_width;
-      cached_size_request->age = priv->cached_height_age;
-
-      priv->cached_height_age += 1;
-      priv->needs_height_request = FALSE;
-    }
-
-  if (!priv->min_height_set)
-    request_min_height = cached_size_request->min_size;
-  else
-    request_min_height = info->min_height;
-
-  if (!priv->natural_height_set)
-    request_natural_height = cached_size_request->natural_size;
-  else
-    request_natural_height = info->natural_height;
-
-  if (min_height_p)
-    *min_height_p = request_min_height;
-
-  if (natural_height_p)
-    *natural_height_p = request_natural_height;
-}
-
-/**
- * clutter_actor_get_allocation_box:
- * @self: A #ClutterActor
- * @box: (out): the function fills this in with the actor's allocation
- *
- * Gets the layout box an actor has been assigned. The allocation can
- * only be assumed valid inside a paint() method; anywhere else, it
- * may be out-of-date.
- *
- * An allocation does not incorporate the actor's scale or anchor point;
- * those transformations do not affect layout, only rendering.
- *
- * <note>Do not call any of the clutter_actor_get_allocation_*() family
- * of functions inside the implementation of the get_preferred_width()
- * or get_preferred_height() virtual functions.</note>
- *
- * Since: 0.8
- */
-void
-clutter_actor_get_allocation_box (ClutterActor    *self,
-                                  ClutterActorBox *box)
-{
-  g_return_if_fail (CLUTTER_IS_ACTOR (self));
-
-  /* XXX - if needs_allocation=TRUE, we can either 1) g_return_if_fail,
-   * which limits calling get_allocation to inside paint() basically; or
-   * we can 2) force a layout, which could be expensive if someone calls
-   * get_allocation somewhere silly; or we can 3) just return the latest
-   * value, allowing it to be out-of-date, and assume people know what
-   * they are doing.
-   *
-   * The least-surprises approach that keeps existing code working is
-   * likely to be 2). People can end up doing some inefficient things,
-   * though, and in general code that requires 2) is probably broken.
-   */
-
-  /* this implements 2) */
-  if (G_UNLIKELY (self->priv->needs_allocation))
-    {
-      ClutterActor *stage = _clutter_actor_get_stage_internal (self);
-
-      /* do not queue a relayout on an unparented actor */
-      if (stage)
-        _clutter_stage_maybe_relayout (stage);
-    }
-
-  /* commenting out the code above and just keeping this assigment
-   * implements 3)
-   */
-  *box = self->priv->allocation;
-}
-
-/**
- * clutter_actor_get_allocation_geometry:
- * @self: A #ClutterActor
- * @geom: (out): allocation geometry in pixels
- *
- * Gets the layout box an actor has been assigned.  The allocation can
- * only be assumed valid inside a paint() method; anywhere else, it
- * may be out-of-date.
- *
- * An allocation does not incorporate the actor's scale or anchor point;
- * those transformations do not affect layout, only rendering.
- *
- * The returned rectangle is in pixels.
- *
- * Since: 0.8
- */
-void
-clutter_actor_get_allocation_geometry (ClutterActor    *self,
-                                       ClutterGeometry *geom)
-{
-  ClutterActorBox box;
-
-  g_return_if_fail (CLUTTER_IS_ACTOR (self));
-  g_return_if_fail (geom != NULL);
-
-  clutter_actor_get_allocation_box (self, &box);
-
-  geom->x = CLUTTER_NEARBYINT (clutter_actor_box_get_x (&box));
-  geom->y = CLUTTER_NEARBYINT (clutter_actor_box_get_y (&box));
-  geom->width = CLUTTER_NEARBYINT (clutter_actor_box_get_width (&box));
-  geom->height = CLUTTER_NEARBYINT (clutter_actor_box_get_height (&box));
-}
-
-/*< private >
- * clutter_actor_adjust_allocation:
- * @self: a #ClutterActor
- * @allocation: (inout): the allocation to adjust
- *
- * Adjusts the passed allocation box taking into account the actor's
- * layout information, like alignment, expansion, and margin.
- */
-static void
-clutter_actor_adjust_allocation (ClutterActor    *self,
-                                 ClutterActorBox *allocation)
-{
-  ClutterActorBox adj_allocation;
-  float alloc_width, alloc_height;
-  float min_width, min_height;
-  float nat_width, nat_height;
-  ClutterRequestMode req_mode;
-
-  adj_allocation = *allocation;
-
-  clutter_actor_box_get_size (allocation, &alloc_width, &alloc_height);
-
-  /* we want to hit the cache, so we use the public API */
-  req_mode = clutter_actor_get_request_mode (self);
-
-  if (req_mode == CLUTTER_REQUEST_HEIGHT_FOR_WIDTH)
-    {
-      clutter_actor_get_preferred_width (self, -1,
-                                         &min_width,
-                                         &nat_width);
-      clutter_actor_get_preferred_height (self, alloc_width,
-                                          &min_height,
-                                          &nat_height);
-    }
-  else if (req_mode == CLUTTER_REQUEST_WIDTH_FOR_HEIGHT)
-    {
-      clutter_actor_get_preferred_height (self, -1,
-                                          &min_height,
-                                          &nat_height);
-      clutter_actor_get_preferred_height (self, alloc_height,
-                                          &min_width,
-                                          &nat_width);
-    }
-
-#ifdef CLUTTER_ENABLE_DEBUG
-  /* warn about underallocations */
-  if (_clutter_diagnostic_enabled () &&
-      (floorf (min_width - alloc_width) > 0 ||
-       floorf (min_height - alloc_height) > 0))
-    {
-      ClutterActor *parent = clutter_actor_get_parent (self);
-
-      /* the only actors that are allowed to be underallocated are the Stage,
-       * as it doesn't have an implicit size, and Actors that specifically
-       * told us that they want to opt-out from layout control mechanisms
-       * through the NO_LAYOUT escape hatch.
-       */
-      if (parent != NULL &&
-          !(self->flags & CLUTTER_ACTOR_NO_LAYOUT) != 0)
-        {
-          g_warning (G_STRLOC ": The actor '%s' is getting an allocation "
-                     "of %.2f x %.2f from its parent actor '%s', but its "
-                     "requested minimum size is of %.2f x %.2f",
-                     _clutter_actor_get_debug_name (self),
-                     alloc_width, alloc_height,
-                     _clutter_actor_get_debug_name (parent),
-                     min_width, min_height);
-        }
-    }
-#endif
-
-  clutter_actor_adjust_width (self,
-                              &min_width,
-                              &nat_width,
-                              &adj_allocation.x1,
-                              &adj_allocation.x2);
-
-  clutter_actor_adjust_height (self,
-                               &min_height,
-                               &nat_height,
-                               &adj_allocation.y1,
-                               &adj_allocation.y2);
-
-  /* we maintain the invariant that an allocation cannot be adjusted
-   * to be outside the parent-given box
-   */
-  if (adj_allocation.x1 < allocation->x1 ||
-      adj_allocation.y1 < allocation->y1 ||
-      adj_allocation.x2 > allocation->x2 ||
-      adj_allocation.y2 > allocation->y2)
-    {
-      g_warning (G_STRLOC ": The actor '%s' tried to adjust its allocation "
-                 "to { %.2f, %.2f, %.2f, %.2f }, which is outside of its "
-                 "original allocation of { %.2f, %.2f, %.2f, %.2f }",
-                 _clutter_actor_get_debug_name (self),
-                 adj_allocation.x1, adj_allocation.y1,
-                 adj_allocation.x2 - adj_allocation.x1,
-                 adj_allocation.y2 - adj_allocation.y1,
-                 allocation->x1, allocation->y1,
-                 allocation->x2 - allocation->x1,
-                 allocation->y2 - allocation->y1);
-      return;
-    }
-
-  *allocation = adj_allocation;
-}
-
-/**
- * clutter_actor_allocate:
- * @self: A #ClutterActor
- * @box: new allocation of the actor, in parent-relative coordinates
- * @flags: flags that control the allocation
- *
- * Called by the parent of an actor to assign the actor its size.
- * Should never be called by applications (except when implementing
- * a container or layout manager).
- *
- * Actors can know from their allocation box whether they have moved
- * with respect to their parent actor. The @flags parameter describes
- * additional information about the allocation, for instance whether
- * the parent has moved with respect to the stage, for example because
- * a grandparent's origin has moved.
- *
- * Since: 0.8
- */
-void
-clutter_actor_allocate (ClutterActor           *self,
-                        const ClutterActorBox  *box,
-                        ClutterAllocationFlags  flags)
-{
-  ClutterActorPrivate *priv;
-  ClutterActorClass *klass;
-  ClutterActorBox old_allocation, real_allocation;
-  gboolean origin_changed, child_moved, size_changed;
-  gboolean stage_allocation_changed;
-
-  g_return_if_fail (CLUTTER_IS_ACTOR (self));
-  if (G_UNLIKELY (_clutter_actor_get_stage_internal (self) == NULL))
-    {
-      g_warning ("Spurious clutter_actor_allocate called for actor %p/%s "
-                 "which isn't a descendent of the stage!\n",
-                 self, _clutter_actor_get_debug_name (self));
-      return;
-    }
-
-  priv = self->priv;
-
-  old_allocation = priv->allocation;
-  real_allocation = *box;
-
-  /* adjust the allocation depending on the align/margin properties */
-  clutter_actor_adjust_allocation (self, &real_allocation);
-
-  if (real_allocation.x2 < real_allocation.x1 ||
-      real_allocation.y2 < real_allocation.y1)
-    {
-      g_warning (G_STRLOC ": Actor '%s' tried to allocate a size of %.2f x %.2f",
-                 _clutter_actor_get_debug_name (self),
-                 real_allocation.x2 - real_allocation.x1,
-                 real_allocation.y2 - real_allocation.y1);
-    }
-
-  /* we allow 0-sized actors, but not negative-sized ones */
-  real_allocation.x2 = MAX (real_allocation.x2, real_allocation.x1);
-  real_allocation.y2 = MAX (real_allocation.y2, real_allocation.y1);
-
-  origin_changed = (flags & CLUTTER_ABSOLUTE_ORIGIN_CHANGED);
-
-  child_moved = (real_allocation.x1 != old_allocation.x1 ||
-                 real_allocation.y1 != old_allocation.y1);
-
-  size_changed = (real_allocation.x2 != old_allocation.x2 ||
-                  real_allocation.y2 != old_allocation.y2);
-
-  if (origin_changed || child_moved || size_changed)
-    stage_allocation_changed = TRUE;
-  else
-    stage_allocation_changed = FALSE;
-
-  /* If we get an allocation "out of the blue"
-   * (we did not queue relayout), then we want to
-   * ignore it. But if we have needs_allocation set,
-   * we want to guarantee that allocate() virtual
-   * method is always called, i.e. that queue_relayout()
-   * always results in an allocate() invocation on
-   * an actor.
-   *
-   * The optimization here is to avoid re-allocating
-   * actors that did not queue relayout and were
-   * not moved.
-   */
-  if (!priv->needs_allocation && !stage_allocation_changed)
-    {
-      CLUTTER_NOTE (LAYOUT, "No allocation needed");
-      return;
-    }
-
-  /* When ABSOLUTE_ORIGIN_CHANGED is passed in to
-   * clutter_actor_allocate(), it indicates whether the parent has its
-   * absolute origin moved; when passed in to ClutterActor::allocate()
-   * virtual method though, it indicates whether the child has its
-   * absolute origin moved.  So we set it when child_moved is TRUE
-   */
-  if (child_moved)
-    flags |= CLUTTER_ABSOLUTE_ORIGIN_CHANGED;
-
-  CLUTTER_SET_PRIVATE_FLAGS (self, CLUTTER_IN_RELAYOUT);
-
-  CLUTTER_NOTE (LAYOUT, "Calling %s::allocate()",
-                _clutter_actor_get_debug_name (self));
-
-  klass = CLUTTER_ACTOR_GET_CLASS (self);
-  klass->allocate (self, &real_allocation, flags);
-
-  CLUTTER_UNSET_PRIVATE_FLAGS (self, CLUTTER_IN_RELAYOUT);
-
-  if (stage_allocation_changed)
-    clutter_actor_queue_redraw (self);
-}
-
-/**
- * clutter_actor_set_allocation:
- * @self: a #ClutterActor
- * @box: a #ClutterActorBox
- * @flags: allocation flags
- *
- * Stores the allocation of @self as defined by @box.
- *
- * This function can only be called from within the implementation of
- * the #ClutterActorClass.allocate() virtual function.
- *
- * The allocation should have been adjusted to take into account
- * alignment and margin properties. If you are implementing a
- * #ClutterActor subclass that provides its own layout management
- * policy for its children instead of using a #ClutterLayoutManager
- * delegate, you should not call this function on the children of
- * @self; instead, you should call clutter_actor_allocate(), which
- * will adjust the allocation box for you.
- *
- * This function should only be used by subclasses of #ClutterActor
- * that wish to store their allocation but cannot chain up to the
- * parent's implementation; the default implementation of the
- * #ClutterActorClass.allocate() virtual function will call this
- * function.
- *
- * It is important to note that, while chaining up was the recommended
- * behaviour for #ClutterActor subclasses prior to the introduction of
- * this function, it is recommended to call clutter_actor_set_allocation()
- * instead.
- *
- * If the #ClutterActor is using a #ClutterLayoutManager delegate object
- * to handle the allocation of its children, this function will call
- * the clutter_layout_manager_allocate() function only if the
- * %CLUTTER_DELEGATE_LAYOUT flag is set on @flags, otherwise it is
- * expected that the subclass will call clutter_layout_manager_allocate()
- * by itself. For instance, the following code:
- *
- * |[
- * static void
- * my_actor_allocate (ClutterActor *actor,
- *                    const ClutterActorBox *allocation,
- *                    ClutterAllocationFlags flags)
- * {
- *   ClutterActorBox new_alloc;
- *   ClutterAllocationFlags new_flags;
- *
- *   adjust_allocation (allocation, &amp;new_alloc);
- *
- *   new_flags = flags | CLUTTER_DELEGATE_LAYOUT;
- *
- *   /&ast; this will use the layout manager set on the actor &ast;/
- *   clutter_actor_set_allocation (actor, &amp;new_alloc, new_flags);
- * }
- * ]|
- *
- * is equivalent to this:
- *
- * |[
- * static void
- * my_actor_allocate (ClutterActor *actor,
- *                    const ClutterActorBox *allocation,
- *                    ClutterAllocationFlags flags)
- * {
- *   ClutterLayoutManager *layout;
- *   ClutterActorBox new_alloc;
- *
- *   adjust_allocation (allocation, &amp;new_alloc);
- *
- *   clutter_actor_set_allocation (actor, &amp;new_alloc, flags);
- *
- *   layout = clutter_actor_get_layout_manager (actor);
- *   clutter_layout_manager_allocate (layout,
- *                                    CLUTTER_CONTAINER (actor),
- *                                    &amp;new_alloc,
- *                                    flags);
- * }
- * ]|
- *
- * Since: 1.10
- */
-void
-clutter_actor_set_allocation (ClutterActor           *self,
-                              const ClutterActorBox  *box,
-                              ClutterAllocationFlags  flags)
-{
-  ClutterActorPrivate *priv;
-  gboolean changed;
-
-  g_return_if_fail (CLUTTER_IS_ACTOR (self));
-  g_return_if_fail (box != NULL);
-
-  if (G_UNLIKELY (!CLUTTER_ACTOR_IN_RELAYOUT (self)))
-    {
-      g_critical (G_STRLOC ": The clutter_actor_set_allocation() function "
-                  "can only be called from within the implementation of "
-                  "the ClutterActor::allocate() virtual function.");
-      return;
-    }
-
-  priv = self->priv;
-
-  g_object_freeze_notify (G_OBJECT (self));
-
-  changed = clutter_actor_set_allocation_internal (self, box, flags);
-
-  /* we allocate our children before we notify changes in our geometry,
-   * so that people connecting to properties will be able to get valid
-   * data out of the sub-tree of the scene graph that has this actor at
-   * the root.
-   */
-  clutter_actor_maybe_layout_children (self, box, flags);
-
-  if (changed)
-    {
-      ClutterActorBox signal_box = priv->allocation;
-      ClutterAllocationFlags signal_flags = priv->allocation_flags;
-
-      g_signal_emit (self, actor_signals[ALLOCATION_CHANGED], 0,
-                     &signal_box,
-                     signal_flags);
-    }
-
-  g_object_thaw_notify (G_OBJECT (self));
-}
-
-/**
  * clutter_actor_set_position:
  * @self: A #ClutterActor
  * @x: New left position of actor in pixels.
@@ -8441,50 +5919,6 @@ clutter_actor_set_position (ClutterActor *self,
 }
 
 /**
- * clutter_actor_get_fixed_position_set:
- * @self: A #ClutterActor
- *
- * Checks whether an actor has a fixed position set (and will thus be
- * unaffected by any layout manager).
- *
- * Return value: %TRUE if the fixed position is set on the actor
- *
- * Since: 0.8
- */
-gboolean
-clutter_actor_get_fixed_position_set (ClutterActor *self)
-{
-  g_return_val_if_fail (CLUTTER_IS_ACTOR (self), FALSE);
-
-  return self->priv->position_set;
-}
-
-/**
- * clutter_actor_set_fixed_position_set:
- * @self: A #ClutterActor
- * @is_set: whether to use fixed position
- *
- * Sets whether an actor has a fixed position set (and will thus be
- * unaffected by any layout manager).
- *
- * Since: 0.8
- */
-void
-clutter_actor_set_fixed_position_set (ClutterActor *self,
-                                      gboolean      is_set)
-{
-  g_return_if_fail (CLUTTER_IS_ACTOR (self));
-
-  if (self->priv->position_set == (is_set != FALSE))
-    return;
-
-  self->priv->position_set = is_set != FALSE;
-  g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_FIXED_POSITION_SET]);
-
-  clutter_actor_queue_relayout (self);
-}
-
-/**
  * clutter_actor_move_by:
  * @self: A #ClutterActor
  * @dx: Distance to move Actor on X axis.
@@ -8504,300 +5938,16 @@ clutter_actor_move_by (ClutterActor *self,
 		       gfloat        dx,
 		       gfloat        dy)
 {
-  const ClutterLayoutInfo *info;
+  const ClutterTransformInfo *info;
   gfloat x, y;
 
   g_return_if_fail (CLUTTER_IS_ACTOR (self));
 
-  info = _clutter_actor_get_layout_info_or_defaults (self);
+  info = _clutter_actor_get_transform_info_or_defaults (self);
   x = info->fixed_x;
   y = info->fixed_y;
 
   clutter_actor_set_position (self, x + dx, y + dy);
-}
-
-static void
-clutter_actor_set_min_width (ClutterActor *self,
-                             gfloat        min_width)
-{
-  ClutterActorPrivate *priv = self->priv;
-  ClutterActorBox old = { 0, };
-  ClutterLayoutInfo *info;
-
-  /* if we are setting the size on a top-level actor and the
-   * backend only supports static top-levels (e.g. framebuffers)
-   * then we ignore the passed value and we override it with
-   * the stage implementation's preferred size.
-   */
-  if (CLUTTER_ACTOR_IS_TOPLEVEL (self) &&
-      clutter_feature_available (CLUTTER_FEATURE_STAGE_STATIC))
-    return;
-
-  info = _clutter_actor_get_layout_info (self);
-
-  if (priv->min_width_set && min_width == info->min_width)
-    return;
-
-  g_object_freeze_notify (G_OBJECT (self));
-
-  clutter_actor_store_old_geometry (self, &old);
-
-  info->min_width = min_width;
-  g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_MIN_WIDTH]);
-  clutter_actor_set_min_width_set (self, TRUE);
-
-  clutter_actor_notify_if_geometry_changed (self, &old);
-
-  g_object_thaw_notify (G_OBJECT (self));
-
-  clutter_actor_queue_relayout (self);
-}
-
-static void
-clutter_actor_set_min_height (ClutterActor *self,
-                              gfloat        min_height)
-
-{
-  ClutterActorPrivate *priv = self->priv;
-  ClutterActorBox old = { 0, };
-  ClutterLayoutInfo *info;
-
-  /* if we are setting the size on a top-level actor and the
-   * backend only supports static top-levels (e.g. framebuffers)
-   * then we ignore the passed value and we override it with
-   * the stage implementation's preferred size.
-   */
-  if (CLUTTER_ACTOR_IS_TOPLEVEL (self) &&
-      clutter_feature_available (CLUTTER_FEATURE_STAGE_STATIC))
-    return;
-
-  info = _clutter_actor_get_layout_info (self);
-
-  if (priv->min_height_set && min_height == info->min_height)
-    return;
-
-  g_object_freeze_notify (G_OBJECT (self));
-
-  clutter_actor_store_old_geometry (self, &old);
-
-  info->min_height = min_height;
-  g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_MIN_HEIGHT]);
-  clutter_actor_set_min_height_set (self, TRUE);
-
-  clutter_actor_notify_if_geometry_changed (self, &old);
-
-  g_object_thaw_notify (G_OBJECT (self));
-
-  clutter_actor_queue_relayout (self);
-}
-
-static void
-clutter_actor_set_natural_width (ClutterActor *self,
-                                 gfloat        natural_width)
-{
-  ClutterActorPrivate *priv = self->priv;
-  ClutterActorBox old = { 0, };
-  ClutterLayoutInfo *info;
-
-  /* if we are setting the size on a top-level actor and the
-   * backend only supports static top-levels (e.g. framebuffers)
-   * then we ignore the passed value and we override it with
-   * the stage implementation's preferred size.
-   */
-  if (CLUTTER_ACTOR_IS_TOPLEVEL (self) &&
-      clutter_feature_available (CLUTTER_FEATURE_STAGE_STATIC))
-    return;
-
-  info = _clutter_actor_get_layout_info (self);
-
-  if (priv->natural_width_set && natural_width == info->natural_width)
-    return;
-
-  g_object_freeze_notify (G_OBJECT (self));
-
-  clutter_actor_store_old_geometry (self, &old);
-
-  info->natural_width = natural_width;
-  g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_NATURAL_WIDTH]);
-  clutter_actor_set_natural_width_set (self, TRUE);
-
-  clutter_actor_notify_if_geometry_changed (self, &old);
-
-  g_object_thaw_notify (G_OBJECT (self));
-
-  clutter_actor_queue_relayout (self);
-}
-
-static void
-clutter_actor_set_natural_height (ClutterActor *self,
-                                  gfloat        natural_height)
-{
-  ClutterActorPrivate *priv = self->priv;
-  ClutterActorBox old = { 0, };
-  ClutterLayoutInfo *info;
-
-  /* if we are setting the size on a top-level actor and the
-   * backend only supports static top-levels (e.g. framebuffers)
-   * then we ignore the passed value and we override it with
-   * the stage implementation's preferred size.
-   */
-  if (CLUTTER_ACTOR_IS_TOPLEVEL (self) &&
-      clutter_feature_available (CLUTTER_FEATURE_STAGE_STATIC))
-    return;
-
-  info = _clutter_actor_get_layout_info (self);
-
-  if (priv->natural_height_set && natural_height == info->natural_height)
-    return;
-
-  g_object_freeze_notify (G_OBJECT (self));
-
-  clutter_actor_store_old_geometry (self, &old);
-
-  info->natural_height = natural_height;
-  g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_NATURAL_HEIGHT]);
-  clutter_actor_set_natural_height_set (self, TRUE);
-
-  clutter_actor_notify_if_geometry_changed (self, &old);
-
-  g_object_thaw_notify (G_OBJECT (self));
-
-  clutter_actor_queue_relayout (self);
-}
-
-static void
-clutter_actor_set_min_width_set (ClutterActor *self,
-                                 gboolean      use_min_width)
-{
-  ClutterActorPrivate *priv = self->priv;
-  ClutterActorBox old = { 0, };
-
-  if (priv->min_width_set == (use_min_width != FALSE))
-    return;
-
-  clutter_actor_store_old_geometry (self, &old);
-
-  priv->min_width_set = use_min_width != FALSE;
-  g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_MIN_WIDTH_SET]);
-
-  clutter_actor_notify_if_geometry_changed (self, &old);
-
-  clutter_actor_queue_relayout (self);
-}
-
-static void
-clutter_actor_set_min_height_set (ClutterActor *self,
-                                  gboolean      use_min_height)
-{
-  ClutterActorPrivate *priv = self->priv;
-  ClutterActorBox old = { 0, };
-
-  if (priv->min_height_set == (use_min_height != FALSE))
-    return;
-
-  clutter_actor_store_old_geometry (self, &old);
-
-  priv->min_height_set = use_min_height != FALSE;
-  g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_MIN_HEIGHT_SET]);
-
-  clutter_actor_notify_if_geometry_changed (self, &old);
-
-  clutter_actor_queue_relayout (self);
-}
-
-static void
-clutter_actor_set_natural_width_set (ClutterActor *self,
-                                     gboolean      use_natural_width)
-{
-  ClutterActorPrivate *priv = self->priv;
-  ClutterActorBox old = { 0, };
-
-  if (priv->natural_width_set == (use_natural_width != FALSE))
-    return;
-
-  clutter_actor_store_old_geometry (self, &old);
-
-  priv->natural_width_set = use_natural_width != FALSE;
-  g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_NATURAL_WIDTH_SET]);
-
-  clutter_actor_notify_if_geometry_changed (self, &old);
-
-  clutter_actor_queue_relayout (self);
-}
-
-static void
-clutter_actor_set_natural_height_set (ClutterActor *self,
-                                      gboolean      use_natural_height)
-{
-  ClutterActorPrivate *priv = self->priv;
-  ClutterActorBox old = { 0, };
-
-  if (priv->natural_height_set == (use_natural_height != FALSE))
-    return;
-
-  clutter_actor_store_old_geometry (self, &old);
-
-  priv->natural_height_set = use_natural_height != FALSE;
-  g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_NATURAL_HEIGHT_SET]);
-
-  clutter_actor_notify_if_geometry_changed (self, &old);
-
-  clutter_actor_queue_relayout (self);
-}
-
-/**
- * clutter_actor_set_request_mode:
- * @self: a #ClutterActor
- * @mode: the request mode
- *
- * Sets the geometry request mode of @self.
- *
- * The @mode determines the order for invoking
- * clutter_actor_get_preferred_width() and
- * clutter_actor_get_preferred_height()
- *
- * Since: 1.2
- */
-void
-clutter_actor_set_request_mode (ClutterActor       *self,
-                                ClutterRequestMode  mode)
-{
-  ClutterActorPrivate *priv;
-
-  g_return_if_fail (CLUTTER_IS_ACTOR (self));
-
-  priv = self->priv;
-
-  if (priv->request_mode == mode)
-    return;
-
-  priv->request_mode = mode;
-
-  priv->needs_width_request = TRUE;
-  priv->needs_height_request = TRUE;
-
-  g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_REQUEST_MODE]);
-
-  clutter_actor_queue_relayout (self);
-}
-
-/**
- * clutter_actor_get_request_mode:
- * @self: a #ClutterActor
- *
- * Retrieves the geometry request mode of @self
- *
- * Return value: the request mode for the actor
- *
- * Since: 1.2
- */
-ClutterRequestMode
-clutter_actor_get_request_mode (ClutterActor *self)
-{
-  g_return_val_if_fail (CLUTTER_IS_ACTOR (self),
-                        CLUTTER_REQUEST_HEIGHT_FOR_WIDTH);
-
-  return self->priv->request_mode;
 }
 
 /* variant of set_width() without checks and without notification
@@ -8807,25 +5957,9 @@ static inline void
 clutter_actor_set_width_internal (ClutterActor *self,
                                   gfloat        width)
 {
-  if (width >= 0)
-    {
-      /* the Stage will use the :min-width to control the minimum
-       * width to be resized to, so we should not be setting it
-       * along with the :natural-width
-       */
-      if (!CLUTTER_ACTOR_IS_TOPLEVEL (self))
-        clutter_actor_set_min_width (self, width);
+  ClutterActorPrivate *priv = self->priv;
 
-      clutter_actor_set_natural_width (self, width);
-    }
-  else
-    {
-      /* we only unset the :natural-width for the Stage */
-      if (!CLUTTER_ACTOR_IS_TOPLEVEL (self))
-        clutter_actor_set_min_width_set (self, FALSE);
-
-      clutter_actor_set_natural_width_set (self, FALSE);
-    }
+  priv->width = width;
 }
 
 /* variant of set_height() without checks and without notification
@@ -8835,22 +5969,9 @@ static inline void
 clutter_actor_set_height_internal (ClutterActor *self,
                                    gfloat        height)
 {
-  if (height >= 0)
-    {
-      /* see the comment above in set_width_internal() */
-      if (!CLUTTER_ACTOR_IS_TOPLEVEL (self))
-        clutter_actor_set_min_height (self, height);
+  ClutterActorPrivate *priv = self->priv;
 
-      clutter_actor_set_natural_height (self, height);
-    }
-  else
-    {
-      /* see the comment above in set_width_internal() */
-      if (!CLUTTER_ACTOR_IS_TOPLEVEL (self))
-        clutter_actor_set_min_height_set (self, FALSE);
-
-      clutter_actor_set_natural_height_set (self, FALSE);
-    }
+  priv->height = height;
 }
 
 /**
@@ -9008,43 +6129,14 @@ clutter_actor_get_transformed_size (ClutterActor *self,
                                     gfloat       *width,
                                     gfloat       *height)
 {
-  ClutterActorPrivate *priv;
   ClutterVertex v[4];
   gfloat x_min, x_max, y_min, y_max;
   gint i;
 
   g_return_if_fail (CLUTTER_IS_ACTOR (self));
 
-  priv = self->priv;
-
-  /* if the actor hasn't been allocated yet, get the preferred
-   * size and transform that
-   */
-  if (priv->needs_allocation)
-    {
-      gfloat natural_width, natural_height;
-      ClutterActorBox box;
-
-      /* Make a fake allocation to transform.
-       *
-       * NB: _clutter_actor_transform_and_project_box expects a box in
-       * the actor's coordinate space... */
-
-      box.x1 = 0;
-      box.y1 = 0;
-
-      natural_width = natural_height = 0;
-      clutter_actor_get_preferred_size (self, NULL, NULL,
-                                        &natural_width,
-                                        &natural_height);
-
-      box.x2 = natural_width;
-      box.y2 = natural_height;
-
-      _clutter_actor_transform_and_project_box (self, &box, v);
-    }
-  else
-    clutter_actor_get_abs_allocation_vertices (self, v);
+  /* TODO_LIONEL: use width/height*/
+  clutter_actor_get_abs_allocation_vertices (self, v);
 
   x_min = x_max = v[0].x;
   y_min = y_max = v[0].y;
@@ -9105,26 +6197,7 @@ clutter_actor_get_width (ClutterActor *self)
 
   priv = self->priv;
 
-  if (priv->needs_allocation)
-    {
-      gfloat natural_width = 0;
-
-      if (self->priv->request_mode == CLUTTER_REQUEST_HEIGHT_FOR_WIDTH)
-        clutter_actor_get_preferred_width (self, -1, NULL, &natural_width);
-      else
-        {
-          gfloat natural_height = 0;
-
-          clutter_actor_get_preferred_height (self, -1, NULL, &natural_height);
-          clutter_actor_get_preferred_width (self, natural_height,
-                                             NULL,
-                                             &natural_width);
-        }
-
-      return natural_width;
-    }
-  else
-    return priv->allocation.x2 - priv->allocation.x1;
+  return priv->width;
 }
 
 /**
@@ -9161,25 +6234,36 @@ clutter_actor_get_height (ClutterActor *self)
 
   priv = self->priv;
 
-  if (priv->needs_allocation)
-    {
-      gfloat natural_height = 0;
+  return priv->height;
+}
 
-      if (priv->request_mode == CLUTTER_REQUEST_HEIGHT_FOR_WIDTH)
-        {
-          gfloat natural_width = 0;
+/**
+ * clutter_actor_get_allocation_geometry:
+ * @self: A #ClutterActor
+ * @geom: (out): allocation geometry in pixels
+ *
+ * Gets the layout box an actor has been assigned.  The allocation can
+ * only be assumed valid inside a paint() method; anywhere else, it
+ * may be out-of-date.
+ *
+ * An allocation does not incorporate the actor's scale or anchor point;
+ * those transformations do not affect layout, only rendering.
+ *
+ * The returned rectangle is in pixels.
+ *
+ * Since: 0.8
+ */
+void
+clutter_actor_get_allocation_geometry (ClutterActor    *self,
+                                       ClutterGeometry *geom)
+{
+  g_return_if_fail (CLUTTER_IS_ACTOR (self));
+  g_return_if_fail (geom != NULL);
 
-          clutter_actor_get_preferred_width (self, -1, NULL, &natural_width);
-          clutter_actor_get_preferred_height (self, natural_width,
-                                              NULL, &natural_height);
-        }
-      else
-        clutter_actor_get_preferred_height (self, -1, NULL, &natural_height);
-
-      return natural_height;
-    }
-  else
-    return priv->allocation.y2 - priv->allocation.y1;
+  geom->x = CLUTTER_NEARBYINT (clutter_actor_get_x (self));
+  geom->y = CLUTTER_NEARBYINT (clutter_actor_get_y (self));
+  geom->width = CLUTTER_NEARBYINT (clutter_actor_get_width (self));
+  geom->height = CLUTTER_NEARBYINT (clutter_actor_get_height (self));
 }
 
 /**
@@ -9286,46 +6370,42 @@ static inline void
 clutter_actor_set_x_internal (ClutterActor *self,
                               float         x)
 {
-  ClutterActorPrivate *priv = self->priv;
-  ClutterLayoutInfo *linfo;
+  ClutterTransformInfo *info;
   ClutterActorBox old = { 0, };
 
-  linfo = _clutter_actor_get_layout_info (self);
+  info = _clutter_actor_get_transform_info (self);
 
-  if (priv->position_set && linfo->fixed_x == x)
+  if (info->fixed_x == x)
     return;
 
   clutter_actor_store_old_geometry (self, &old);
 
-  linfo->fixed_x = x;
-  clutter_actor_set_fixed_position_set (self, TRUE);
+  info->fixed_x = x;
 
   clutter_actor_notify_if_geometry_changed (self, &old);
 
-  clutter_actor_queue_relayout (self);
+  clutter_actor_queue_redraw (self);
 }
 
 static inline void
 clutter_actor_set_y_internal (ClutterActor *self,
                               float         y)
 {
-  ClutterActorPrivate *priv = self->priv;
-  ClutterLayoutInfo *linfo;
+  ClutterTransformInfo *info;
   ClutterActorBox old = { 0, };
 
-  linfo = _clutter_actor_get_layout_info (self);
+  info = _clutter_actor_get_transform_info (self);
 
-  if (priv->position_set && linfo->fixed_y == y)
+  if (info->fixed_y == y)
     return;
 
   clutter_actor_store_old_geometry (self, &old);
 
-  linfo->fixed_y = y;
-  clutter_actor_set_fixed_position_set (self, TRUE);
+  info->fixed_y = y;
 
   clutter_actor_notify_if_geometry_changed (self, &old);
 
-  clutter_actor_queue_relayout (self);
+  clutter_actor_queue_redraw (self);
 }
 
 /**
@@ -9417,27 +6497,13 @@ clutter_actor_set_y (ClutterActor *self,
 gfloat
 clutter_actor_get_x (ClutterActor *self)
 {
-  ClutterActorPrivate *priv;
+  const ClutterTransformInfo *info;
 
   g_return_val_if_fail (CLUTTER_IS_ACTOR (self), 0);
 
-  priv = self->priv;
+  info = _clutter_actor_get_transform_info_or_defaults (self);
 
-  if (priv->needs_allocation)
-    {
-      if (priv->position_set)
-        {
-          const ClutterLayoutInfo *info;
-
-          info = _clutter_actor_get_layout_info_or_defaults (self);
-
-          return info->fixed_x;
-        }
-      else
-        return 0;
-    }
-  else
-    return priv->allocation.x1;
+  return info->fixed_x;
 }
 
 /**
@@ -9465,27 +6531,13 @@ clutter_actor_get_x (ClutterActor *self)
 gfloat
 clutter_actor_get_y (ClutterActor *self)
 {
-  ClutterActorPrivate *priv;
+  const ClutterTransformInfo *info;
 
   g_return_val_if_fail (CLUTTER_IS_ACTOR (self), 0);
 
-  priv = self->priv;
+  info = _clutter_actor_get_transform_info_or_defaults (self);
 
-  if (priv->needs_allocation)
-    {
-      if (priv->position_set)
-        {
-          const ClutterLayoutInfo *info;
-
-          info = _clutter_actor_get_layout_info_or_defaults (self);
-
-          return info->fixed_y;
-        }
-      else
-        return 0;
-    }
-  else
-    return priv->allocation.y1;
+  return info->fixed_y;
 }
 
 /**
@@ -10768,24 +7820,6 @@ clutter_actor_add_child_internal (ClutterActor              *self,
   if (CLUTTER_ACTOR_IS_MAPPED (child))
     clutter_actor_queue_redraw (child);
 
-  /* maintain the invariant that if an actor needs layout,
-   * its parents do as well
-   */
-  if (child->priv->needs_width_request ||
-      child->priv->needs_height_request ||
-      child->priv->needs_allocation)
-    {
-      /* we work around the short-circuiting we do
-       * in clutter_actor_queue_relayout() since we
-       * want to force a relayout
-       */
-      child->priv->needs_width_request = TRUE;
-      child->priv->needs_height_request = TRUE;
-      child->priv->needs_allocation = TRUE;
-
-      clutter_actor_queue_relayout (child->priv->parent);
-    }
-
   if (emit_actor_added)
     g_signal_emit_by_name (self, "actor-added", child);
 
@@ -11254,7 +8288,7 @@ clutter_actor_set_child_above_sibling (ClutterActor *self,
                                     insert_child_above,
                                     sibling);
 
-  clutter_actor_queue_relayout (self);
+  clutter_actor_queue_redraw (self);
 }
 
 /**
@@ -11295,7 +8329,7 @@ clutter_actor_set_child_below_sibling (ClutterActor *self,
                                     insert_child_below,
                                     sibling);
 
-  clutter_actor_queue_relayout (self);
+  clutter_actor_queue_redraw (self);
 }
 
 /**
@@ -11329,7 +8363,7 @@ clutter_actor_set_child_at_index (ClutterActor *self,
                                     insert_child_at_index,
                                     GINT_TO_POINTER (index_));
 
-  clutter_actor_queue_relayout (self);
+  clutter_actor_queue_redraw (self);
 }
 
 /*
@@ -11714,23 +8748,6 @@ clutter_actor_set_anchor_point_from_gravity (ClutterActor   *self,
 
       g_object_thaw_notify (obj);
     }
-}
-
-static void
-clutter_actor_store_content_box (ClutterActor *self,
-                                 const ClutterActorBox *box)
-{
-  if (box != NULL)
-    {
-      self->priv->content_box = *box;
-      self->priv->content_box_valid = TRUE;
-    }
-  else
-    self->priv->content_box_valid = FALSE;
-
-  clutter_actor_queue_redraw (self);
-
-  g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_CONTENT_BOX]);
 }
 
 static void
@@ -12327,10 +9344,6 @@ clutter_actor_set_animatable_property (ClutterActor *actor,
                                                  g_value_get_double (value));
       break;
 
-    case PROP_CONTENT_BOX:
-      clutter_actor_store_content_box (actor, g_value_get_boxed (value));
-      break;
-
     default:
       g_object_set_property (obj, pspec->name, value);
       break;
@@ -12447,8 +9460,8 @@ clutter_actor_transform_stage_point (ClutterActor *self,
   /* Keeping these as ints simplifies the multiplication (no significant
    * loss of precision here).
    */
-  du = (int) (priv->allocation.x2 - priv->allocation.x1);
-  dv = (int) (priv->allocation.y2 - priv->allocation.y1);
+  du = (int) priv->width;
+  dv = (int) priv->height;
 
   if (!du || !dv)
     return FALSE;
@@ -12881,304 +9894,6 @@ clutter_actor_get_stage (ClutterActor *actor)
   g_return_val_if_fail (CLUTTER_IS_ACTOR (actor), NULL);
 
   return _clutter_actor_get_stage_internal (actor);
-}
-
-/**
- * clutter_actor_allocate_available_size:
- * @self: a #ClutterActor
- * @x: the actor's X coordinate
- * @y: the actor's Y coordinate
- * @available_width: the maximum available width, or -1 to use the
- *   actor's natural width
- * @available_height: the maximum available height, or -1 to use the
- *   actor's natural height
- * @flags: flags controlling the allocation
- *
- * Allocates @self taking into account the #ClutterActor<!-- -->'s
- * preferred size, but limiting it to the maximum available width
- * and height provided.
- *
- * This function will do the right thing when dealing with the
- * actor's request mode.
- *
- * The implementation of this function is equivalent to:
- *
- * |[
- *   if (request_mode == CLUTTER_REQUEST_HEIGHT_FOR_WIDTH)
- *     {
- *       clutter_actor_get_preferred_width (self, available_height,
- *                                          &amp;min_width,
- *                                          &amp;natural_width);
- *       width = CLAMP (natural_width, min_width, available_width);
- *
- *       clutter_actor_get_preferred_height (self, width,
- *                                           &amp;min_height,
- *                                           &amp;natural_height);
- *       height = CLAMP (natural_height, min_height, available_height);
- *     }
- *   else
- *     {
- *       clutter_actor_get_preferred_height (self, available_width,
- *                                           &amp;min_height,
- *                                           &amp;natural_height);
- *       height = CLAMP (natural_height, min_height, available_height);
- *
- *       clutter_actor_get_preferred_width (self, height,
- *                                          &amp;min_width,
- *                                          &amp;natural_width);
- *       width = CLAMP (natural_width, min_width, available_width);
- *     }
- *
- *   box.x1 = x; box.y1 = y;
- *   box.x2 = box.x1 + available_width;
- *   box.y2 = box.y1 + available_height;
- *   clutter_actor_allocate (self, &amp;box, flags);
- * ]|
- *
- * This function can be used by fluid layout managers to allocate
- * an actor's preferred size without making it bigger than the area
- * available for the container.
- *
- * Since: 1.0
- */
-void
-clutter_actor_allocate_available_size (ClutterActor           *self,
-                                       gfloat                  x,
-                                       gfloat                  y,
-                                       gfloat                  available_width,
-                                       gfloat                  available_height,
-                                       ClutterAllocationFlags  flags)
-{
-  ClutterActorPrivate *priv;
-  gfloat width, height;
-  gfloat min_width, min_height;
-  gfloat natural_width, natural_height;
-  ClutterActorBox box;
-
-  g_return_if_fail (CLUTTER_IS_ACTOR (self));
-
-  priv = self->priv;
-
-  width = height = 0.0;
-
-  switch (priv->request_mode)
-    {
-    case CLUTTER_REQUEST_HEIGHT_FOR_WIDTH:
-      clutter_actor_get_preferred_width (self, available_height,
-                                         &min_width,
-                                         &natural_width);
-      width  = CLAMP (natural_width, min_width, available_width);
-
-      clutter_actor_get_preferred_height (self, width,
-                                          &min_height,
-                                          &natural_height);
-      height = CLAMP (natural_height, min_height, available_height);
-      break;
-
-    case CLUTTER_REQUEST_WIDTH_FOR_HEIGHT:
-      clutter_actor_get_preferred_height (self, available_width,
-                                          &min_height,
-                                          &natural_height);
-      height = CLAMP (natural_height, min_height, available_height);
-
-      clutter_actor_get_preferred_width (self, height,
-                                         &min_width,
-                                         &natural_width);
-      width  = CLAMP (natural_width, min_width, available_width);
-      break;
-    }
-
-
-  box.x1 = x;
-  box.y1 = y;
-  box.x2 = box.x1 + width;
-  box.y2 = box.y1 + height;
-  clutter_actor_allocate (self, &box, flags);
-}
-
-/**
- * clutter_actor_allocate_preferred_size:
- * @self: a #ClutterActor
- * @flags: flags controlling the allocation
- *
- * Allocates the natural size of @self.
- *
- * This function is a utility call for #ClutterActor implementations
- * that allocates the actor's preferred natural size. It can be used
- * by fixed layout managers (like #ClutterGroup or so called
- * 'composite actors') inside the ClutterActor::allocate
- * implementation to give each child exactly how much space it
- * requires.
- *
- * This function is not meant to be used by applications. It is also
- * not meant to be used outside the implementation of the
- * ClutterActor::allocate virtual function.
- *
- * Since: 0.8
- */
-void
-clutter_actor_allocate_preferred_size (ClutterActor           *self,
-                                       ClutterAllocationFlags  flags)
-{
-  gfloat actor_x, actor_y;
-  gfloat natural_width, natural_height;
-  ClutterActorBox actor_box;
-
-  g_return_if_fail (CLUTTER_IS_ACTOR (self));
-
-  actor_x = clutter_actor_get_x (self);
-  actor_y = clutter_actor_get_y (self);
-
-  clutter_actor_get_preferred_size (self,
-                                    NULL, NULL,
-                                    &natural_width,
-                                    &natural_height);
-
-  actor_box.x1 = actor_x;
-  actor_box.y1 = actor_y;
-  actor_box.x2 = actor_box.x1 + natural_width;
-  actor_box.y2 = actor_box.y1 + natural_height;
-
-  clutter_actor_allocate (self, &actor_box, flags);
-}
-
-/**
- * clutter_actor_allocate_align_fill:
- * @self: a #ClutterActor
- * @box: a #ClutterActorBox, containing the available width and height
- * @x_align: the horizontal alignment, between 0 and 1
- * @y_align: the vertical alignment, between 0 and 1
- * @x_fill: whether the actor should fill horizontally
- * @y_fill: whether the actor should fill vertically
- * @flags: allocation flags to be passed to clutter_actor_allocate()
- *
- * Allocates @self by taking into consideration the available allocation
- * area; an alignment factor on either axis; and whether the actor should
- * fill the allocation on either axis.
- *
- * The @box should contain the available allocation width and height;
- * if the x1 and y1 members of #ClutterActorBox are not set to 0, the
- * allocation will be offset by their value.
- *
- * This function takes into consideration the geometry request specified by
- * the #ClutterActor:request-mode property, and the text direction.
- *
- * This function is useful for fluid layout managers, like #ClutterBinLayout
- * or #ClutterTableLayout
- *
- * Since: 1.4
- */
-void
-clutter_actor_allocate_align_fill (ClutterActor           *self,
-                                   const ClutterActorBox  *box,
-                                   gdouble                 x_align,
-                                   gdouble                 y_align,
-                                   gboolean                x_fill,
-                                   gboolean                y_fill,
-                                   ClutterAllocationFlags  flags)
-{
-  ClutterActorPrivate *priv;
-  ClutterActorBox allocation = { 0, };
-  gfloat x_offset, y_offset;
-  gfloat available_width, available_height;
-  gfloat child_width, child_height;
-
-  g_return_if_fail (CLUTTER_IS_ACTOR (self));
-  g_return_if_fail (box != NULL);
-  g_return_if_fail (x_align >= 0.0 && x_align <= 1.0);
-  g_return_if_fail (y_align >= 0.0 && y_align <= 1.0);
-
-  priv = self->priv;
-
-  clutter_actor_box_get_origin (box, &x_offset, &y_offset);
-  clutter_actor_box_get_size (box, &available_width, &available_height);
-
-  if (available_width < 0)
-    available_width = 0;
-
-  if (available_height < 0)
-    available_height = 0;
-
-  if (x_fill)
-    {
-      allocation.x1 = x_offset;
-      allocation.x2 = allocation.x1 + available_width;
-    }
-
-  if (y_fill)
-    {
-      allocation.y1 = y_offset;
-      allocation.y2 = allocation.y1 + available_height;
-    }
-
-  /* if we are filling horizontally and vertically then we're done */
-  if (x_fill && y_fill)
-    goto out;
-
-  child_width = child_height = 0.0f;
-
-  if (priv->request_mode == CLUTTER_REQUEST_HEIGHT_FOR_WIDTH)
-    {
-      gfloat min_width, natural_width;
-      gfloat min_height, natural_height;
-
-      clutter_actor_get_preferred_width (self, available_height,
-                                         &min_width,
-                                         &natural_width);
-
-      child_width = CLAMP (natural_width, min_width, available_width);
-
-      if (!y_fill)
-        {
-          clutter_actor_get_preferred_height (self, child_width,
-                                              &min_height,
-                                              &natural_height);
-
-          child_height = CLAMP (natural_height, min_height, available_height);
-        }
-    }
-  else
-    {
-      gfloat min_width, natural_width;
-      gfloat min_height, natural_height;
-
-      clutter_actor_get_preferred_height (self, available_width,
-                                          &min_height,
-                                          &natural_height);
-
-      child_height = CLAMP (natural_height, min_height, available_height);
-
-      if (!x_fill)
-        {
-          clutter_actor_get_preferred_width (self, child_height,
-                                             &min_width,
-                                             &natural_width);
-
-          child_width = CLAMP (natural_width, min_width, available_width);
-        }
-    }
-
-  /* invert the horizontal alignment for RTL languages */
-  if (priv->text_direction == CLUTTER_TEXT_DIRECTION_RTL)
-    x_align = 1.0 - x_align;
-
-  if (!x_fill)
-    {
-      allocation.x1 = x_offset
-                    + ((available_width - child_width) * x_align);
-      allocation.x2 = allocation.x1 + child_width;
-    }
-
-  if (!y_fill)
-    {
-      allocation.y1 = y_offset
-                    + ((available_height - child_height) * y_align);
-      allocation.y2 = allocation.y1 + child_height;
-    }
-
-out:
-  clutter_actor_box_clamp_to_pixel (&allocation);
-  clutter_actor_allocate (self, &allocation, flags);
 }
 
 /**
@@ -13772,7 +10487,7 @@ clutter_actor_set_text_direction (ClutterActor         *self,
       _clutter_actor_foreach_child (self, set_direction_recursive,
                                     GINT_TO_POINTER (text_dir));
 
-      clutter_actor_queue_relayout (self);
+      clutter_actor_queue_redraw (self);
     }
 }
 
@@ -13859,89 +10574,6 @@ _clutter_actor_set_queue_redraw_clip (ClutterActor       *self,
   g_object_set_data (G_OBJECT (self),
                      "-clutter-actor-queue-redraw-clip",
                      clip);
-}
-
-/**
- * clutter_actor_has_allocation:
- * @self: a #ClutterActor
- *
- * Checks if the actor has an up-to-date allocation assigned to
- * it. This means that the actor should have an allocation: it's
- * visible and has a parent. It also means that there is no
- * outstanding relayout request in progress for the actor or its
- * children (There might be other outstanding layout requests in
- * progress that will cause the actor to get a new allocation
- * when the stage is laid out, however).
- *
- * If this function returns %FALSE, then the actor will normally
- * be allocated before it is next drawn on the screen.
- *
- * Return value: %TRUE if the actor has an up-to-date allocation
- *
- * Since: 1.4
- */
-gboolean
-clutter_actor_has_allocation (ClutterActor *self)
-{
-  ClutterActorPrivate *priv;
-
-  g_return_val_if_fail (CLUTTER_IS_ACTOR (self), FALSE);
-
-  priv = self->priv;
-
-  return priv->parent != NULL &&
-         CLUTTER_ACTOR_IS_VISIBLE (self) &&
-         !priv->needs_allocation;
-}
-
-/**
- * clutter_actor_set_clip_to_allocation:
- * @self: a #ClutterActor
- * @clip_set: %TRUE to apply a clip tracking the allocation
- *
- * Sets whether @self should be clipped to the same size as its
- * allocation
- *
- * Since: 1.4
- */
-void
-clutter_actor_set_clip_to_allocation (ClutterActor *self,
-                                      gboolean      clip_set)
-{
-  ClutterActorPrivate *priv;
-
-  g_return_if_fail (CLUTTER_IS_ACTOR (self));
-
-  clip_set = !!clip_set;
-
-  priv = self->priv;
-
-  if (priv->clip_to_allocation != clip_set)
-    {
-      priv->clip_to_allocation = clip_set;
-
-      clutter_actor_queue_redraw (self);
-
-      g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_CLIP_TO_ALLOCATION]);
-    }
-}
-
-/**
- * clutter_actor_get_clip_to_allocation:
- * @self: a #ClutterActor
- *
- * Retrieves the value set using clutter_actor_set_clip_to_allocation()
- *
- * Return value: %TRUE if the #ClutterActor is clipped to its allocation
- *
- * Since: 1.4
- */
-gboolean
-clutter_actor_get_clip_to_allocation (ClutterActor *self)
-{
-  g_return_val_if_fail (CLUTTER_IS_ACTOR (self), FALSE);
-
-  return self->priv->clip_to_allocation;
 }
 
 /**
@@ -14164,16 +10796,6 @@ _clutter_actor_get_paint_volume_real (ClutterActor *self,
                                       ClutterPaintVolume *pv)
 {
   ClutterActorPrivate *priv = self->priv;
-
-  /* Actors are only expected to report a valid paint volume
-   * while they have a valid allocation. */
-  if (G_UNLIKELY (priv->needs_allocation))
-    {
-      CLUTTER_NOTE (CLIPPING, "Bail from get_paint_volume (%s): "
-                    "Actor needs allocation",
-                    _clutter_actor_get_debug_name (self));
-      return FALSE;
-    }
 
   /* Check if there are any handlers connected to the paint
    * signal. If there are then all bets are off for what the paint
@@ -14723,597 +11345,6 @@ _clutter_actor_traverse (ClutterActor              *actor,
                                    user_data);
 }
 
-static void
-on_layout_manager_changed (ClutterLayoutManager *manager,
-                           ClutterActor         *self)
-{
-  clutter_actor_queue_relayout (self);
-}
-
-/**
- * clutter_actor_set_layout_manager:
- * @self: a #ClutterActor
- * @manager: (allow-none): a #ClutterLayoutManager, or %NULL to unset it
- *
- * Sets the #ClutterLayoutManager delegate object that will be used to
- * lay out the children of @self.
- *
- * The #ClutterActor will take a reference on the passed @manager which
- * will be released either when the layout manager is removed, or when
- * the actor is destroyed.
- *
- * Since: 1.10
- */
-void
-clutter_actor_set_layout_manager (ClutterActor         *self,
-                                  ClutterLayoutManager *manager)
-{
-  ClutterActorPrivate *priv;
-
-  g_return_if_fail (CLUTTER_IS_ACTOR (self));
-  g_return_if_fail (manager == NULL || CLUTTER_IS_LAYOUT_MANAGER (manager));
-
-  priv = self->priv;
-
-  if (priv->layout_manager != NULL)
-    {
-      g_signal_handlers_disconnect_by_func (priv->layout_manager,
-                                            G_CALLBACK (on_layout_manager_changed),
-                                            self);
-      clutter_layout_manager_set_container (priv->layout_manager, NULL);
-      g_clear_object (&priv->layout_manager);
-    }
-
-  priv->layout_manager = manager;
-
-  if (priv->layout_manager != NULL)
-    {
-      g_object_ref_sink (priv->layout_manager);
-      clutter_layout_manager_set_container (priv->layout_manager,
-                                            CLUTTER_CONTAINER (self));
-      g_signal_connect (priv->layout_manager, "layout-changed",
-                        G_CALLBACK (on_layout_manager_changed),
-                        self);
-    }
-
-  clutter_actor_queue_relayout (self);
-
-  g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_LAYOUT_MANAGER]);
-}
-
-/**
- * clutter_actor_get_layout_manager:
- * @self: a #ClutterActor
- *
- * Retrieves the #ClutterLayoutManager used by @self.
- *
- * Return value: (transfer none): a pointer to the #ClutterLayoutManager,
- *   or %NULL
- *
- * Since: 1.10
- */
-ClutterLayoutManager *
-clutter_actor_get_layout_manager (ClutterActor *self)
-{
-  g_return_val_if_fail (CLUTTER_IS_ACTOR (self), NULL);
-
-  return self->priv->layout_manager;
-}
-
-static const ClutterLayoutInfo default_layout_info = {
-  0.f,                          /* fixed-x */
-  0.f,                          /* fixed-y */
-  { 0, 0, 0, 0 },               /* margin */
-  CLUTTER_ACTOR_ALIGN_FILL,     /* x-align */
-  CLUTTER_ACTOR_ALIGN_FILL,     /* y-align */
-  0.f, 0.f,                     /* min_width, natural_width */
-  0.f, 0.f,                     /* natual_width, natural_height */
-};
-
-static void
-layout_info_free (gpointer data)
-{
-  if (G_LIKELY (data != NULL))
-    g_slice_free (ClutterLayoutInfo, data);
-}
-
-/*< private >
- * _clutter_actor_get_layout_info:
- * @self: a #ClutterActor
- *
- * Retrieves a pointer to the ClutterLayoutInfo structure.
- *
- * If the actor does not have a ClutterLayoutInfo associated to it, one
- * will be created and initialized to the default values.
- *
- * This function should be used for setters.
- *
- * For getters, you should use _clutter_actor_get_layout_info_or_defaults()
- * instead.
- *
- * Return value: (transfer none): a pointer to the ClutterLayoutInfo structure
- */
-ClutterLayoutInfo *
-_clutter_actor_get_layout_info (ClutterActor *self)
-{
-  ClutterLayoutInfo *retval;
-
-  retval = g_object_get_qdata (G_OBJECT (self), quark_actor_layout_info);
-  if (retval == NULL)
-    {
-      retval = g_slice_new (ClutterLayoutInfo);
-
-      *retval = default_layout_info;
-
-      g_object_set_qdata_full (G_OBJECT (self), quark_actor_layout_info,
-                               retval,
-                               layout_info_free);
-    }
-
-  return retval;
-}
-
-/*< private >
- * _clutter_actor_get_layout_info_or_defaults:
- * @self: a #ClutterActor
- *
- * Retrieves the ClutterLayoutInfo structure associated to an actor.
- *
- * If the actor does not have a ClutterLayoutInfo structure associated to it,
- * then the default structure will be returned.
- *
- * This function should only be used for getters.
- *
- * Return value: a const pointer to the ClutterLayoutInfo structure
- */
-const ClutterLayoutInfo *
-_clutter_actor_get_layout_info_or_defaults (ClutterActor *self)
-{
-  const ClutterLayoutInfo *info;
-
-  info = g_object_get_qdata (G_OBJECT (self), quark_actor_layout_info);
-  if (info == NULL)
-    return &default_layout_info;
-
-  return info;
-}
-
-/**
- * clutter_actor_set_x_align:
- * @self: a #ClutterActor
- * @x_align: the horizontal alignment policy
- *
- * Sets the horizontal alignment policy of a #ClutterActor, in case the
- * actor received extra horizontal space.
- *
- * See also the #ClutterActor:x-align property.
- *
- * Since: 1.10
- */
-void
-clutter_actor_set_x_align (ClutterActor      *self,
-                           ClutterActorAlign  x_align)
-{
-  ClutterLayoutInfo *info;
-
-  g_return_if_fail (CLUTTER_IS_ACTOR (self));
-
-  info = _clutter_actor_get_layout_info (self);
-
-  if (info->x_align != x_align)
-    {
-      info->x_align = x_align;
-
-      clutter_actor_queue_relayout (self);
-
-      g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_X_ALIGN]);
-    }
-}
-
-/**
- * clutter_actor_get_x_align:
- * @self: a #ClutterActor
- *
- * Retrieves the horizontal alignment policy set using
- * clutter_actor_set_x_align().
- *
- * Return value: the horizontal alignment policy.
- *
- * Since: 1.10
- */
-ClutterActorAlign
-clutter_actor_get_x_align (ClutterActor *self)
-{
-  g_return_val_if_fail (CLUTTER_IS_ACTOR (self), CLUTTER_ACTOR_ALIGN_FILL);
-
-  return _clutter_actor_get_layout_info_or_defaults (self)->x_align;
-}
-
-/**
- * clutter_actor_set_y_align:
- * @self: a #ClutterActor
- * @y_align: the vertical alignment policy
- *
- * Sets the vertical alignment policy of a #ClutterActor, in case the
- * actor received extra vertical space.
- *
- * See also the #ClutterActor:y-align property.
- *
- * Since: 1.10
- */
-void
-clutter_actor_set_y_align (ClutterActor      *self,
-                           ClutterActorAlign  y_align)
-{
-  ClutterLayoutInfo *info;
-
-  g_return_if_fail (CLUTTER_IS_ACTOR (self));
-
-  info = _clutter_actor_get_layout_info (self);
-
-  if (info->y_align != y_align)
-    {
-      info->y_align = y_align;
-
-      clutter_actor_queue_relayout (self);
-
-      g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_Y_ALIGN]);
-    }
-}
-
-/**
- * clutter_actor_get_y_align:
- * @self: a #ClutterActor
- *
- * Retrieves the vertical alignment policy set using
- * clutter_actor_set_y_align().
- *
- * Return value: the vertical alignment policy.
- *
- * Since: 1.10
- */
-ClutterActorAlign
-clutter_actor_get_y_align (ClutterActor *self)
-{
-  g_return_val_if_fail (CLUTTER_IS_ACTOR (self), CLUTTER_ACTOR_ALIGN_FILL);
-
-  return _clutter_actor_get_layout_info_or_defaults (self)->y_align;
-}
-
-
-/**
- * clutter_margin_new:
- *
- * Creates a new #ClutterMargin.
- *
- * Return value: (transfer full): a newly allocated #ClutterMargin. Use
- *   clutter_margin_free() to free the resources associated with it when
- *   done.
- *
- * Since: 1.10
- */
-ClutterMargin *
-clutter_margin_new (void)
-{
-  return g_slice_new0 (ClutterMargin);
-}
-
-/**
- * clutter_margin_copy:
- * @margin_: a #ClutterMargin
- *
- * Creates a new #ClutterMargin and copies the contents of @margin_ into
- * the newly created structure.
- *
- * Return value: (transfer full): a copy of the #ClutterMargin.
- *
- * Since: 1.10
- */
-ClutterMargin *
-clutter_margin_copy (const ClutterMargin *margin_)
-{
-  if (G_LIKELY (margin_ != NULL))
-    return g_slice_dup (ClutterMargin, margin_);
-
-  return NULL;
-}
-
-/**
- * clutter_margin_free:
- * @margin_: a #ClutterMargin
- *
- * Frees the resources allocated by clutter_margin_new() and
- * clutter_margin_copy().
- *
- * Since: 1.10
- */
-void
-clutter_margin_free (ClutterMargin *margin_)
-{
-  if (G_LIKELY (margin_ != NULL))
-    g_slice_free (ClutterMargin, margin_);
-}
-
-G_DEFINE_BOXED_TYPE (ClutterMargin, clutter_margin,
-                     clutter_margin_copy,
-                     clutter_margin_free)
-
-/**
- * clutter_actor_set_margin:
- * @self: a #ClutterActor
- * @margin: a #ClutterMargin
- *
- * Sets all the components of the margin of a #ClutterActor.
- *
- * Since: 1.10
- */
-void
-clutter_actor_set_margin (ClutterActor        *self,
-                          const ClutterMargin *margin)
-{
-  ClutterLayoutInfo *info;
-  gboolean changed;
-  GObject *obj;
-
-  g_return_if_fail (CLUTTER_IS_ACTOR (self));
-  g_return_if_fail (margin != NULL);
-
-  obj = G_OBJECT (self);
-  changed = FALSE;
-
-  g_object_freeze_notify (obj);
-
-  info = _clutter_actor_get_layout_info (self);
-
-  if (info->margin.top != margin->top)
-    {
-      info->margin.top = margin->top;
-      g_object_notify_by_pspec (obj, obj_props[PROP_MARGIN_TOP]);
-      changed = TRUE;
-    }
-
-  if (info->margin.right != margin->right)
-    {
-      info->margin.right = margin->right;
-      g_object_notify_by_pspec (obj, obj_props[PROP_MARGIN_RIGHT]);
-      changed = TRUE;
-    }
-
-  if (info->margin.bottom != margin->bottom)
-    {
-      info->margin.bottom = margin->bottom;
-      g_object_notify_by_pspec (obj, obj_props[PROP_MARGIN_BOTTOM]);
-      changed = TRUE;
-    }
-
-  if (info->margin.left != margin->left)
-    {
-      info->margin.left = margin->left;
-      g_object_notify_by_pspec (obj, obj_props[PROP_MARGIN_LEFT]);
-      changed = TRUE;
-    }
-
-  if (changed)
-    clutter_actor_queue_relayout (self);
-
-  g_object_thaw_notify (obj);
-}
-
-/**
- * clutter_actor_get_margin:
- * @self: a #ClutterActor
- * @margin: (out caller-allocates): return location for a #ClutterMargin
- *
- * Retrieves all the components of the margin of a #ClutterActor.
- *
- * Since: 1.10
- */
-void
-clutter_actor_get_margin (ClutterActor  *self,
-                          ClutterMargin *margin)
-{
-  const ClutterLayoutInfo *info;
-
-  g_return_if_fail (CLUTTER_IS_ACTOR (self));
-  g_return_if_fail (margin != NULL);
-
-  info = _clutter_actor_get_layout_info_or_defaults (self);
-
-  *margin = info->margin;
-}
-
-/**
- * clutter_actor_set_margin_top:
- * @self: a #ClutterActor
- * @margin: the top margin
- *
- * Sets the margin from the top of a #ClutterActor.
- *
- * Since: 1.10
- */
-void
-clutter_actor_set_margin_top (ClutterActor *self,
-                              gfloat        margin)
-{
-  ClutterLayoutInfo *info;
-
-  g_return_if_fail (CLUTTER_IS_ACTOR (self));
-  g_return_if_fail (margin >= 0.f);
-
-  info = _clutter_actor_get_layout_info (self);
-
-  if (info->margin.top == margin)
-    return;
-
-  info->margin.top = margin;
-
-  clutter_actor_queue_relayout (self);
-
-  g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_MARGIN_TOP]);
-}
-
-/**
- * clutter_actor_get_margin_top:
- * @self: a #ClutterActor
- *
- * Retrieves the top margin of a #ClutterActor.
- *
- * Return value: the top margin
- *
- * Since: 1.10
- */
-gfloat
-clutter_actor_get_margin_top (ClutterActor *self)
-{
-  g_return_val_if_fail (CLUTTER_IS_ACTOR (self), 0.f);
-
-  return _clutter_actor_get_layout_info_or_defaults (self)->margin.top;
-}
-
-/**
- * clutter_actor_set_margin_bottom:
- * @self: a #ClutterActor
- * @margin: the bottom margin
- *
- * Sets the margin from the bottom of a #ClutterActor.
- *
- * Since: 1.10
- */
-void
-clutter_actor_set_margin_bottom (ClutterActor *self,
-                                 gfloat        margin)
-{
-  ClutterLayoutInfo *info;
-
-  g_return_if_fail (CLUTTER_IS_ACTOR (self));
-  g_return_if_fail (margin >= 0.f);
-
-  info = _clutter_actor_get_layout_info (self);
-
-  if (info->margin.bottom == margin)
-    return;
-
-  info->margin.bottom = margin;
-
-  clutter_actor_queue_relayout (self);
-
-  g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_MARGIN_BOTTOM]);
-}
-
-/**
- * clutter_actor_get_margin_bottom:
- * @self: a #ClutterActor
- *
- * Retrieves the bottom margin of a #ClutterActor.
- *
- * Return value: the bottom margin
- *
- * Since: 1.10
- */
-gfloat
-clutter_actor_get_margin_bottom (ClutterActor *self)
-{
-  g_return_val_if_fail (CLUTTER_IS_ACTOR (self), 0.f);
-
-  return _clutter_actor_get_layout_info_or_defaults (self)->margin.bottom;
-}
-
-/**
- * clutter_actor_set_margin_left:
- * @self: a #ClutterActor
- * @margin: the left margin
- *
- * Sets the margin from the left of a #ClutterActor.
- *
- * Since: 1.10
- */
-void
-clutter_actor_set_margin_left (ClutterActor *self,
-                               gfloat        margin)
-{
-  ClutterLayoutInfo *info;
-
-  g_return_if_fail (CLUTTER_IS_ACTOR (self));
-  g_return_if_fail (margin >= 0.f);
-
-  info = _clutter_actor_get_layout_info (self);
-
-  if (info->margin.left == margin)
-    return;
-
-  info->margin.left = margin;
-
-  clutter_actor_queue_relayout (self);
-
-  g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_MARGIN_LEFT]);
-}
-
-/**
- * clutter_actor_get_margin_left:
- * @self: a #ClutterActor
- *
- * Retrieves the left margin of a #ClutterActor.
- *
- * Return value: the left margin
- *
- * Since: 1.10
- */
-gfloat
-clutter_actor_get_margin_left (ClutterActor *self)
-{
-  g_return_val_if_fail (CLUTTER_IS_ACTOR (self), 0.f);
-
-  return _clutter_actor_get_layout_info_or_defaults (self)->margin.left;
-}
-
-/**
- * clutter_actor_set_margin_right:
- * @self: a #ClutterActor
- * @margin: the right margin
- *
- * Sets the margin from the right of a #ClutterActor.
- *
- * Since: 1.10
- */
-void
-clutter_actor_set_margin_right (ClutterActor *self,
-                                gfloat        margin)
-{
-  ClutterLayoutInfo *info;
-
-  g_return_if_fail (CLUTTER_IS_ACTOR (self));
-  g_return_if_fail (margin >= 0.f);
-
-  info = _clutter_actor_get_layout_info (self);
-
-  if (info->margin.right == margin)
-    return;
-
-  info->margin.right = margin;
-
-  clutter_actor_queue_relayout (self);
-
-  g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_MARGIN_RIGHT]);
-}
-
-/**
- * clutter_actor_get_margin_right:
- * @self: a #ClutterActor
- *
- * Retrieves the right margin of a #ClutterActor.
- *
- * Return value: the right margin
- *
- * Since: 1.10
- */
-gfloat
-clutter_actor_get_margin_right (ClutterActor *self)
-{
-  g_return_val_if_fail (CLUTTER_IS_ACTOR (self), 0.f);
-
-  return _clutter_actor_get_layout_info_or_defaults (self)->margin.right;
-}
-
 static inline void
 clutter_actor_set_background_color_internal (ClutterActor *self,
                                              const ClutterColor *color)
@@ -15849,9 +11880,6 @@ on_transition_completed (ClutterTransition *transition,
   gint n_repeats, cur_repeat;
 
   info = _clutter_actor_get_animation_info (actor);
-
-  /* reset the caches used by animations */
-  clutter_actor_store_content_box (actor, NULL);
 
   /* ensure that we remove the transition only at the end
    * of its run; we emit ::completed for every repeat
@@ -16525,444 +12553,3 @@ clutter_actor_restore_easing_state (ClutterActor *self)
     }
 }
 
-/**
- * clutter_actor_set_content:
- * @self: a #ClutterActor
- * @content: (allow-none): a #ClutterContent, or %NULL
- *
- * Sets the contents of a #ClutterActor.
- *
- * Since: 1.10
- */
-void
-clutter_actor_set_content (ClutterActor   *self,
-                           ClutterContent *content)
-{
-  ClutterActorPrivate *priv;
-
-  g_return_if_fail (CLUTTER_IS_ACTOR (self));
-  g_return_if_fail (content == NULL || CLUTTER_IS_CONTENT (content));
-
-  priv = self->priv;
-
-  if (priv->content != NULL)
-    {
-      _clutter_content_detached (priv->content, self);
-      g_clear_object (&priv->content);
-    }
-
-  priv->content = content;
-
-  if (priv->content != NULL)
-    {
-      g_object_ref (priv->content);
-      _clutter_content_attached (priv->content, self);
-    }
-
-  /* given that the content is always painted within the allocation,
-   * we only need to queue a redraw here
-   */
-  clutter_actor_queue_redraw (self);
-
-  g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_CONTENT]);
-
-  /* if the content gravity is not resize-fill, and the new content has a
-   * different preferred size than the previous one, then the content box
-   * may have been changed. since we compute that lazily, we just notify
-   * here, and let whomever watches :content-box do whatever they need to
-   * do.
-   */
-  if (priv->content_gravity != CLUTTER_CONTENT_GRAVITY_RESIZE_FILL)
-    g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_CONTENT_BOX]);
-}
-
-/**
- * clutter_actor_get_content:
- * @self: a #ClutterActor
- *
- * Retrieves the contents of @self.
- *
- * Return value: (transfer none): a pointer to the #ClutterContent instance,
- *   or %NULL if none was set
- *
- * Since: 1.10
- */
-ClutterContent *
-clutter_actor_get_content (ClutterActor *self)
-{
-  g_return_val_if_fail (CLUTTER_IS_ACTOR (self), NULL);
-
-  return self->priv->content;
-}
-
-/**
- * clutter_actor_set_content_gravity:
- * @self: a #ClutterActor
- * @gravity: the #ClutterContentGravity
- *
- * Sets the gravity of the #ClutterContent used by @self.
- *
- * See the description of the #ClutterActor:content-gravity property for
- * more information.
- *
- * The #ClutterActor:content-gravity property is animatable.
- *
- * Since: 1.10
- */
-void
-clutter_actor_set_content_gravity (ClutterActor *self,
-                                   ClutterContentGravity  gravity)
-{
-  ClutterActorPrivate *priv;
-
-  g_return_if_fail (CLUTTER_IS_ACTOR (self));
-
-  priv = self->priv;
-
-  if (priv->content_gravity == gravity)
-    return;
-
-  priv->content_box_valid = FALSE;
-
-  if (_clutter_actor_get_transition (self, obj_props[PROP_CONTENT_BOX]) == NULL)
-    {
-      ClutterActorBox from_box, to_box;
-
-      clutter_actor_get_content_box (self, &from_box);
-
-      priv->content_gravity = gravity;
-
-      clutter_actor_get_content_box (self, &to_box);
-
-      _clutter_actor_create_transition (self, obj_props[PROP_CONTENT_BOX],
-                                        &from_box,
-                                        &to_box);
-    }
-  else
-    {
-      ClutterActorBox to_box;
-
-      priv->content_gravity = gravity;
-
-      clutter_actor_get_content_box (self, &to_box);
-
-      _clutter_actor_update_transition (self, obj_props[PROP_CONTENT_BOX],
-                                        &to_box);
-    }
-
-  clutter_actor_queue_redraw (self);
-
-  g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_CONTENT_GRAVITY]);
-}
-
-/**
- * clutter_actor_get_content_gravity:
- * @self: a #ClutterActor
- *
- * Retrieves the content gravity as set using
- * clutter_actor_get_content_gravity().
- *
- * Return value: the content gravity
- *
- * Since: 1.10
- */
-ClutterContentGravity
-clutter_actor_get_content_gravity (ClutterActor *self)
-{
-  g_return_val_if_fail (CLUTTER_IS_ACTOR (self),
-                        CLUTTER_CONTENT_GRAVITY_RESIZE_FILL);
-
-  return self->priv->content_gravity;
-}
-
-/**
- * clutter_actor_get_content_box:
- * @self: a #ClutterActor
- * @box: (out caller-allocates): the return location for the bounding
- *   box for the #ClutterContent
- *
- * Retrieves the bounding box for the #ClutterContent of @self.
- *
- * The bounding box is relative to the actor's allocation.
- *
- * If no #ClutterContent is set for @self, or if @self has not been
- * allocated yet, then the result is undefined.
- *
- * The content box is guaranteed to be, at most, as big as the allocation
- * of the #ClutterActor.
- *
- * If the #ClutterContent used by the actor has a preferred size, then
- * it is possible to modify the content box by using the
- * #ClutterActor:content-gravity property.
- *
- * Since: 1.10
- */
-void
-clutter_actor_get_content_box (ClutterActor    *self,
-                               ClutterActorBox *box)
-{
-  ClutterActorPrivate *priv;
-  gfloat content_w, content_h;
-  gfloat alloc_w, alloc_h;
-
-  g_return_if_fail (CLUTTER_IS_ACTOR (self));
-  g_return_if_fail (box != NULL);
-
-  priv = self->priv;
-
-  box->x1 = 0.f;
-  box->y1 = 0.f;
-  box->x2 = priv->allocation.x2 - priv->allocation.x1;
-  box->y2 = priv->allocation.y2 - priv->allocation.y1;
-
-  if (priv->content_box_valid)
-    {
-      *box = priv->content_box;
-      return;
-    }
-
-  /* no need to do any more work */
-  if (priv->content_gravity == CLUTTER_CONTENT_GRAVITY_RESIZE_FILL)
-    return;
-
-  if (priv->content == NULL)
-    return;
-
-  /* if the content does not have a preferred size then there is
-   * no point in computing the content box
-   */
-  if (!clutter_content_get_preferred_size (priv->content,
-                                           &content_w,
-                                           &content_h))
-    return;
-
-  alloc_w = box->x2;
-  alloc_h = box->y2;
-
-  switch (priv->content_gravity)
-    {
-    case CLUTTER_CONTENT_GRAVITY_TOP_LEFT:
-      box->x2 = box->x1 + MIN (content_w, alloc_w);
-      box->y2 = box->y1 + MIN (content_h, alloc_h);
-      break;
-
-    case CLUTTER_CONTENT_GRAVITY_TOP:
-      if (alloc_w > content_w)
-        {
-          box->x1 += ceilf ((alloc_w - content_w) / 2.0);
-          box->x2 = box->x1 + content_w;
-        }
-      box->y2 = box->y1 + MIN (content_h, alloc_h);
-      break;
-
-    case CLUTTER_CONTENT_GRAVITY_TOP_RIGHT:
-      if (alloc_w > content_w)
-        {
-          box->x1 += (alloc_w - content_w);
-          box->x2 = box->x1 + content_w;
-        }
-      box->y2 = box->y1 + MIN (content_h, alloc_h);
-      break;
-
-    case CLUTTER_CONTENT_GRAVITY_LEFT:
-      box->x2 = box->x1 + MIN (content_w, alloc_w);
-      if (alloc_h > content_h)
-        {
-          box->y1 += ceilf ((alloc_h - content_h) / 2.0);
-          box->y2 = box->y1 + content_h;
-        }
-      break;
-
-    case CLUTTER_CONTENT_GRAVITY_CENTER:
-      if (alloc_w > content_w)
-        {
-          box->x1 += ceilf ((alloc_w - content_w) / 2.0);
-          box->x2 = box->x1 + content_w;
-        }
-      if (alloc_h > content_h)
-        {
-          box->y1 += ceilf ((alloc_h - content_h) / 2.0);
-          box->y2 = box->y1 + content_h;
-        }
-      break;
-
-    case CLUTTER_CONTENT_GRAVITY_RIGHT:
-      if (alloc_w > content_w)
-        {
-          box->x1 += (alloc_w - content_w);
-          box->x2 = box->x1 + content_w;
-        }
-      if (alloc_h > content_h)
-        {
-          box->y1 += ceilf ((alloc_h - content_h) / 2.0);
-          box->y2 = box->y1 + content_h;
-        }
-      break;
-
-    case CLUTTER_CONTENT_GRAVITY_BOTTOM_LEFT:
-      box->x2 = box->x1 + MIN (content_w, alloc_w);
-      if (alloc_h > content_h)
-        {
-          box->y1 += (alloc_h - content_h);
-          box->y2 = box->y1 + content_h;
-        }
-      break;
-
-    case CLUTTER_CONTENT_GRAVITY_BOTTOM:
-      if (alloc_w > content_w)
-        {
-          box->x1 += ceilf ((alloc_w - content_w) / 2.0);
-          box->x2 = box->x1 + content_w;
-        }
-      if (alloc_h > content_h)
-        {
-          box->y1 += (alloc_h - content_h);
-          box->y2 = box->y1 + content_h;
-        }
-      break;
-
-    case CLUTTER_CONTENT_GRAVITY_BOTTOM_RIGHT:
-      if (alloc_w > content_w)
-        {
-          box->x1 += (alloc_w - content_w);
-          box->x2 = box->x1 + content_w;
-        }
-      if (alloc_h > content_h)
-        {
-          box->y1 += (alloc_h - content_h);
-          box->y2 = box->y1 + content_h;
-        }
-      break;
-
-    case CLUTTER_CONTENT_GRAVITY_RESIZE_FILL:
-      g_assert_not_reached ();
-      break;
-
-    case CLUTTER_CONTENT_GRAVITY_RESIZE_ASPECT:
-      {
-        double r_c = content_w / content_h;
-        double r_a = alloc_w / alloc_h;
-
-        if (r_c >= 1.0)
-          {
-            if (r_a >= 1.0)
-              {
-                box->x1 = 0.f;
-                box->x2 = alloc_w;
-
-                box->y1 = (alloc_h - (alloc_w * r_c)) / 2.0f;
-                box->y2 = box->y1 + (alloc_w * r_c);
-              }
-            else
-              {
-                box->y1 = 0.f;
-                box->y2 = alloc_h;
-
-                box->x1 = (alloc_w - (alloc_h * r_c)) / 2.0f;
-                box->x2 = box->x1 + (alloc_h * r_c);
-              }
-          }
-        else
-          {
-            if (r_a >= 1.0)
-              {
-                box->y1 = 0.f;
-                box->y2 = alloc_h;
-
-                box->x1 = (alloc_w - (alloc_h * r_c)) / 2.0f;
-                box->x2 = box->x1 + (alloc_h * r_c);
-              }
-            else
-              {
-                box->x1 = 0.f;
-                box->x2 = alloc_w;
-
-                box->y1 = (alloc_h - (alloc_w * r_c)) / 2.0f;
-                box->y2 = box->y1 + (alloc_w * r_c);
-              }
-          }
-      }
-      break;
-    }
-}
-
-/**
- * clutter_actor_set_content_scaling_filters:
- * @self: a #ClutterActor
- * @min_filter: the minification filter for the content
- * @mag_filter: the magnification filter for the content
- *
- * Sets the minification and magnification filter to be applied when
- * scaling the #ClutterActor:content of a #ClutterActor.
- *
- * The #ClutterActor:minification-filter will be used when reducing
- * the size of the content; the #ClutterActor:magnification-filter
- * will be used when increasing the size of the content.
- *
- * Since: 1.10
- */
-void
-clutter_actor_set_content_scaling_filters (ClutterActor         *self,
-                                           ClutterScalingFilter  min_filter,
-                                           ClutterScalingFilter  mag_filter)
-{
-  ClutterActorPrivate *priv;
-  gboolean changed;
-  GObject *obj;
-
-  g_return_if_fail (CLUTTER_IS_ACTOR (self));
-
-  priv = self->priv;
-  obj = G_OBJECT (self);
-
-  g_object_freeze_notify (obj);
-
-  changed = FALSE;
-
-  if (priv->min_filter != min_filter)
-    {
-      priv->min_filter = min_filter;
-      changed = TRUE;
-
-      g_object_notify_by_pspec (obj, obj_props[PROP_MINIFICATION_FILTER]);
-    }
-
-  if (priv->mag_filter != mag_filter)
-    {
-      priv->mag_filter = mag_filter;
-      changed = TRUE;
-
-      g_object_notify_by_pspec (obj, obj_props[PROP_MAGNIFICATION_FILTER]);
-    }
-
-  if (changed)
-    clutter_actor_queue_redraw (self);
-
-  g_object_thaw_notify (obj);
-}
-
-/**
- * clutter_actor_get_content_scaling_filters:
- * @self: a #ClutterActor
- * @min_filter: (out) (allow-none): return location for the minification
- *   filter, or %NULL
- * @mag_filter: (out) (allow-none): return location for the magnification
- *   filter, or %NULL
- *
- * Retrieves the values set using clutter_actor_set_content_scaling_filters().
- *
- * Since: 1.10
- */
-void
-clutter_actor_get_content_scaling_filters (ClutterActor         *self,
-                                           ClutterScalingFilter *min_filter,
-                                           ClutterScalingFilter *mag_filter)
-{
-  g_return_if_fail (CLUTTER_IS_ACTOR (self));
-
-  if (min_filter != NULL)
-    *min_filter = self->priv->min_filter;
-
-  if (mag_filter != NULL)
-    *mag_filter = self->priv->mag_filter;
-}

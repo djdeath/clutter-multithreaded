@@ -54,12 +54,9 @@ source_h =					\
 	$(srcdir)/clutter-animator.h		\
 	$(srcdir)/clutter-backend.h		\
 	$(srcdir)/clutter-binding-pool.h 	\
-	$(srcdir)/clutter-bin-layout.h		\
 	$(srcdir)/clutter-blur-effect.h		\
-	$(srcdir)/clutter-box-layout.h		\
 	$(srcdir)/clutter-brightness-contrast-effect.h	\
 	$(srcdir)/clutter-cairo-texture.h	\
-	$(srcdir)/clutter-canvas.h		\
 	$(srcdir)/clutter-child-meta.h		\
 	$(srcdir)/clutter-cogl-compat.h 	\
 	$(srcdir)/clutter-clone.h		\
@@ -75,9 +72,6 @@ source_h =					\
 	$(srcdir)/clutter-enums.h		\
 	$(srcdir)/clutter-event.h 		\
 	$(srcdir)/clutter-feature.h 		\
-	$(srcdir)/clutter-fixed-layout.h	\
-	$(srcdir)/clutter-flow-layout.h		\
-	$(srcdir)/clutter-image.h		\
 	$(srcdir)/clutter-input-device.h	\
         $(srcdir)/clutter-interval.h            \
 	$(srcdir)/clutter-keysyms.h 		\
@@ -102,7 +96,6 @@ source_h =					\
 	$(srcdir)/clutter-stage.h 		\
 	$(srcdir)/clutter-stage-manager.h	\
 	$(srcdir)/clutter-state.h		\
-	$(srcdir)/clutter-table-layout.h	\
 	$(srcdir)/clutter-texture.h 		\
 	$(srcdir)/clutter-text.h		\
 	$(srcdir)/clutter-text-buffer.h		\
@@ -123,12 +116,9 @@ source_c = \
 	$(srcdir)/clutter-backend.c		\
 	$(srcdir)/clutter-bezier.c		\
 	$(srcdir)/clutter-binding-pool.c	\
-	$(srcdir)/clutter-bin-layout.c		\
 	$(srcdir)/clutter-blur-effect.c		\
-	$(srcdir)/clutter-box-layout.c		\
 	$(srcdir)/clutter-brightness-contrast-effect.c	\
 	$(srcdir)/clutter-cairo-texture.c       \
-	$(srcdir)/clutter-canvas.c		\
 	$(srcdir)/clutter-child-meta.c		\
 	$(srcdir)/clutter-clone.c		\
 	$(srcdir)/clutter-color.c 		\
@@ -141,10 +131,7 @@ source_c = \
 	$(srcdir)/clutter-effect.c		\
 	$(srcdir)/clutter-event.c 		\
 	$(srcdir)/clutter-feature.c 		\
-	$(srcdir)/clutter-fixed-layout.c	\
 	$(srcdir)/clutter-flatten-effect.c	\
-	$(srcdir)/clutter-flow-layout.c		\
-	$(srcdir)/clutter-image.c		\
 	$(srcdir)/clutter-input-device.c	\
 	$(srcdir)/clutter-interval.c            \
 	$(srcdir)/clutter-keysyms-table.c	\
@@ -171,7 +158,6 @@ source_c = \
 	$(srcdir)/clutter-stage-manager.c	\
 	$(srcdir)/clutter-stage-window.c	\
 	$(srcdir)/clutter-state.c		\
-	$(srcdir)/clutter-table-layout.c	\
 	$(srcdir)/clutter-texture.c 		\
 	$(srcdir)/clutter-text.c		\
 	$(srcdir)/clutter-text-buffer.c		\

@@ -109,9 +109,7 @@ typedef gboolean (*ClutterForeachCallback) (ClutterActor *actor,
                                             gpointer      user_data);
 
 typedef struct _AnchorCoord             AnchorCoord;
-typedef struct _SizeRequest             SizeRequest;
 
-typedef struct _ClutterLayoutInfo       ClutterLayoutInfo;
 typedef struct _ClutterTransformInfo    ClutterTransformInfo;
 typedef struct _ClutterAnimationInfo    ClutterAnimationInfo;
 
@@ -137,50 +135,12 @@ struct _AnchorCoord
   } v;
 };
 
-struct _SizeRequest
-{
-  guint  age;
-  gfloat for_size;
-  gfloat min_size;
-  gfloat natural_size;
-};
-
-/*< private >
- * ClutterLayoutInfo:
- * @fixed_x: the fixed position of the actor, set using clutter_actor_set_x()
- * @fixed_y: the fixed position of the actor, set using clutter_actor_set_y()
- * @margin: the composed margin of the actor
- * @x_align: the horizontal alignment, if the actor expands horizontally
- * @y_align: the vertical alignment, if the actor expands vertically
- * @min_width: the minimum width, set using clutter_actor_set_min_width()
- * @min_height: the minimum height, set using clutter_actor_set_min_height()
- * @natural_width: the natural width, set using clutter_actor_set_natural_width()
- * @natural_height: the natural height, set using clutter_actor_set_natural_height()
- *
- * Ancillary layout information for an actor.
- */
-struct _ClutterLayoutInfo
-{
-  /* fixed position coordinates */
-  float fixed_x;
-  float fixed_y;
-
-  ClutterMargin margin;
-
-  guint x_align : 4;
-  guint y_align : 4;
-
-  float min_width;
-  float min_height;
-  float natural_width;
-  float natural_height;
-};
-
-const ClutterLayoutInfo *       _clutter_actor_get_layout_info_or_defaults      (ClutterActor *self);
-ClutterLayoutInfo *             _clutter_actor_get_layout_info                  (ClutterActor *self);
-
 struct _ClutterTransformInfo
 {
+  /* fixed position coordinates */
+  gfloat fixed_x;
+  gfloat fixed_y;
+
   /* rotation (angle and center) */
   gdouble rx_angle;
   AnchorCoord rx_center;

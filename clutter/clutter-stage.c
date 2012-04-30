@@ -154,7 +154,6 @@ struct _ClutterStagePrivate
 
   ClutterStageState current_state;
 
-  guint relayout_pending       : 1;
   guint redraw_pending         : 1;
   guint is_fullscreen          : 1;
   guint is_cursor_visible      : 1;
@@ -203,49 +202,9 @@ static guint stage_signals[LAST_SIGNAL] = { 0, };
 
 static const ClutterColor default_stage_color = { 255, 255, 255, 255 };
 
+static void _clutter_stage_sync_sizes (ClutterStage *self);
+
 static void _clutter_stage_maybe_finish_queue_redraws (ClutterStage *stage);
-
-static void
-clutter_stage_get_preferred_width (ClutterActor *self,
-                                   gfloat        for_height,
-                                   gfloat       *min_width_p,
-                                   gfloat       *natural_width_p)
-{
-  ClutterStagePrivate *priv = CLUTTER_STAGE (self)->priv;
-  cairo_rectangle_int_t geom;
-
-  if (priv->impl == NULL)
-    return;
-
-  _clutter_stage_window_get_geometry (priv->impl, &geom);
-
-  if (min_width_p)
-    *min_width_p = geom.width;
-
-  if (natural_width_p)
-    *natural_width_p = geom.width;
-}
-
-static void
-clutter_stage_get_preferred_height (ClutterActor *self,
-                                    gfloat        for_width,
-                                    gfloat       *min_height_p,
-                                    gfloat       *natural_height_p)
-{
-  ClutterStagePrivate *priv = CLUTTER_STAGE (self)->priv;
-  cairo_rectangle_int_t geom;
-
-  if (priv->impl == NULL)
-    return;
-
-  _clutter_stage_window_get_geometry (priv->impl, &geom);
-
-  if (min_height_p)
-    *min_height_p = geom.height;
-
-  if (natural_height_p)
-    *natural_height_p = geom.height;
-}
 
 static inline void
 queue_full_redraw (ClutterStage *stage)
@@ -286,29 +245,21 @@ stage_is_default (ClutterStage *stage)
 }
 
 static void
-clutter_stage_allocate (ClutterActor           *self,
-                        const ClutterActorBox  *box,
-                        ClutterAllocationFlags  flags)
+_clutter_stage_sync_sizes (ClutterStage *self)
 {
-  ClutterStagePrivate *priv = CLUTTER_STAGE (self)->priv;
+  ClutterStagePrivate *priv = self->priv;
   ClutterGeometry prev_geom, geom;
   cairo_rectangle_int_t window_size;
-  gboolean origin_changed;
-  gint width, height;
-
-  origin_changed = (flags & CLUTTER_ABSOLUTE_ORIGIN_CHANGED)
-                 ? TRUE
-                 : FALSE;
+  gfloat width, height;
 
   if (priv->impl == NULL)
     return;
 
   /* our old allocation */
-  clutter_actor_get_allocation_geometry (self, &prev_geom);
+  clutter_actor_get_allocation_geometry (CLUTTER_ACTOR (self), &prev_geom);
 
   /* the current allocation */
-  width = clutter_actor_box_get_width (box);
-  height = clutter_actor_box_get_height (box);
+  clutter_actor_get_size (CLUTTER_ACTOR (self), &width, &height);
 
   /* the current Stage implementation size */
   _clutter_stage_window_get_geometry (priv->impl, &window_size);
@@ -318,72 +269,17 @@ clutter_stage_allocate (ClutterActor           *self,
    * allocation chain - because we cannot forcibly change the size of the
    * stage window.
    */
-  if ((!clutter_feature_available (CLUTTER_FEATURE_STAGE_STATIC)))
+  if (clutter_feature_available (CLUTTER_FEATURE_STAGE_STATIC))
     {
-      CLUTTER_NOTE (LAYOUT,
-                    "Following allocation to %dx%d (origin %s)",
-                    width, height,
-                    origin_changed ? "changed" : "not changed");
-
-      clutter_actor_set_allocation (self, box,
-                                    flags | CLUTTER_DELEGATE_LAYOUT);
-
-      /* Ensure the window is sized correctly */
-      if (!priv->is_fullscreen)
-        {
-          if (priv->min_size_changed)
-            {
-              gfloat min_width, min_height;
-              gboolean min_width_set, min_height_set;
-
-              g_object_get (G_OBJECT (self),
-                            "min-width", &min_width,
-                            "min-width-set", &min_width_set,
-                            "min-height", &min_height,
-                            "min-height-set", &min_height_set,
-                            NULL);
-
-              if (!min_width_set)
-                min_width = 1;
-              if (!min_height_set)
-                min_height = 1;
-
-              if (width < min_width)
-                width = min_width;
-              if (height < min_height)
-                height = min_height;
-
-              priv->min_size_changed = FALSE;
-            }
-
-          if (window_size.width != width ||
-              window_size.height != height)
-            {
-              _clutter_stage_window_resize (priv->impl, width, height);
-            }
-        }
+      width = window_size.width;
+      height = window_size.height;
     }
-  else
+
+
+  if (window_size.width != width ||
+      window_size.height != height)
     {
-      ClutterActorBox override = { 0, };
-
-      /* override the passed allocation */
-      override.x1 = 0;
-      override.y1 = 0;
-      override.x2 = window_size.width;
-      override.y2 = window_size.height;
-
-      CLUTTER_NOTE (LAYOUT,
-                    "Overrigin original allocation of %dx%d "
-                    "with %dx%d (origin %s)",
-                    width, height,
-                    (int) (override.x2),
-                    (int) (override.y2),
-                    origin_changed ? "changed" : "not changed");
-
-      /* and store the overridden allocation */
-      clutter_actor_set_allocation (self, &override,
-                                    flags | CLUTTER_DELEGATE_LAYOUT);
+      _clutter_stage_window_resize (priv->impl, width, height);
     }
 
   /* XXX: Until Cogl becomes fully responsible for backend windows
@@ -397,7 +293,7 @@ clutter_stage_allocate (ClutterActor           *self,
                                           window_size.height);
 
   /* reset the viewport if the allocation effectively changed */
-  clutter_actor_get_allocation_geometry (self, &geom);
+  clutter_actor_get_allocation_geometry (CLUTTER_ACTOR (self), &geom);
   if (geom.width != prev_geom.width ||
       geom.height != prev_geom.height)
     {
@@ -719,13 +615,14 @@ clutter_stage_unrealize (ClutterActor *self)
 static void
 clutter_stage_show (ClutterActor *self)
 {
-  ClutterStagePrivate *priv = CLUTTER_STAGE (self)->priv;
+  ClutterStage *stage = CLUTTER_STAGE (self);
+  ClutterStagePrivate *priv = stage->priv;
 
   CLUTTER_ACTOR_CLASS (clutter_stage_parent_class)->show (self);
 
   /* Possibly do an allocation run so that the stage will have the
      right size before we map it */
-  _clutter_stage_maybe_relayout (self);
+  _clutter_stage_sync_sizes (stage);
 
   g_assert (priv->impl != NULL);
   _clutter_stage_window_show (priv->impl, TRUE);
@@ -774,35 +671,7 @@ clutter_stage_real_deactivate (ClutterStage *stage)
 static void
 clutter_stage_real_fullscreen (ClutterStage *stage)
 {
-  ClutterStagePrivate *priv = stage->priv;
-  cairo_rectangle_int_t geom;
-  ClutterActorBox box;
-
-  /* we need to force an allocation here because the size
-   * of the stage might have been changed by the backend
-   *
-   * this is a really bad solution to the issues caused by
-   * the fact that fullscreening the stage on the X11 backends
-   * is really an asynchronous operation
-   */
-  _clutter_stage_window_get_geometry (priv->impl, &geom);
-
-  box.x1 = 0;
-  box.y1 = 0;
-  box.x2 = geom.width;
-  box.y2 = geom.height;
-
-  /* we need to blow the caching on the Stage size, given that
-   * we're about to force an allocation, because if anything
-   * ends up querying the size of the stage during the allocate()
-   * call, like constraints or signal handlers, we'll get into an
-   * inconsistent state: the stage will report the old cached size,
-   * but the allocation will be updated anyway.
-   */
-  clutter_actor_set_size (CLUTTER_ACTOR (stage), -1.0, -1.0);
-  clutter_actor_allocate (CLUTTER_ACTOR (stage),
-                          &box,
-                          CLUTTER_ALLOCATION_NONE);
+  _clutter_stage_sync_sizes (stage);
 }
 
 void
@@ -945,55 +814,7 @@ _clutter_stage_needs_update (ClutterStage *stage)
 
   priv = stage->priv;
 
-  return priv->relayout_pending || priv->redraw_pending;
-}
-
-void
-_clutter_stage_maybe_relayout (ClutterActor *actor)
-{
-  ClutterStage *stage = CLUTTER_STAGE (actor);
-  ClutterStagePrivate *priv = stage->priv;
-  gfloat natural_width, natural_height;
-  ClutterActorBox box = { 0, };
-  CLUTTER_STATIC_TIMER (relayout_timer,
-                        "Mainloop", /* no parent */
-                        "Layouting",
-                        "The time spent reallocating the stage",
-                        0 /* no application private data */);
-
-  if (!priv->relayout_pending)
-    return;
-
-  /* avoid reentrancy */
-  if (!CLUTTER_ACTOR_IN_RELAYOUT (stage))
-    {
-      priv->relayout_pending = FALSE;
-
-      CLUTTER_TIMER_START (_clutter_uprof_context, relayout_timer);
-      CLUTTER_NOTE (ACTOR, "Recomputing layout");
-
-      CLUTTER_SET_PRIVATE_FLAGS (stage, CLUTTER_IN_RELAYOUT);
-
-      natural_width = natural_height = 0;
-      clutter_actor_get_preferred_size (CLUTTER_ACTOR (stage),
-                                        NULL, NULL,
-                                        &natural_width, &natural_height);
-
-      box.x1 = 0;
-      box.y1 = 0;
-      box.x2 = natural_width;
-      box.y2 = natural_height;
-
-      CLUTTER_NOTE (ACTOR, "Allocating (0, 0 - %d, %d) for the stage",
-                    (int) natural_width,
-                    (int) natural_height);
-
-      clutter_actor_allocate (CLUTTER_ACTOR (stage),
-                              &box, CLUTTER_ALLOCATION_NONE);
-
-      CLUTTER_UNSET_PRIVATE_FLAGS (stage, CLUTTER_IN_RELAYOUT);
-      CLUTTER_TIMER_STOP (_clutter_uprof_context, relayout_timer);
-    }
+  return priv->redraw_pending;
 }
 
 static gboolean
@@ -1112,7 +933,7 @@ _clutter_stage_do_update (ClutterStage *stage)
    * check or clear the pending redraws flag since a relayout may
    * queue a redraw.
    */
-  _clutter_stage_maybe_relayout (CLUTTER_ACTOR (stage));
+  _clutter_stage_sync_sizes (stage);
 
   if (!priv->redraw_pending)
     return FALSE;
@@ -1135,20 +956,6 @@ _clutter_stage_do_update (ClutterStage *stage)
 #endif /* CLUTTER_ENABLE_DEBUG */
 
   return TRUE;
-}
-
-static void
-clutter_stage_real_queue_relayout (ClutterActor *self)
-{
-  ClutterStage *stage = CLUTTER_STAGE (self);
-  ClutterStagePrivate *priv = stage->priv;
-  ClutterActorClass *parent_class;
-
-  priv->relayout_pending = TRUE;
-
-  /* chain up */
-  parent_class = CLUTTER_ACTOR_CLASS (clutter_stage_parent_class);
-  parent_class->queue_relayout (self);
 }
 
 static void
@@ -1742,9 +1549,6 @@ clutter_stage_class_init (ClutterStageClass *klass)
   gobject_class->dispose = clutter_stage_dispose;
   gobject_class->finalize = clutter_stage_finalize;
 
-  actor_class->allocate = clutter_stage_allocate;
-  actor_class->get_preferred_width = clutter_stage_get_preferred_width;
-  actor_class->get_preferred_height = clutter_stage_get_preferred_height;
   actor_class->paint = clutter_stage_paint;
   actor_class->pick = clutter_stage_pick;
   actor_class->get_paint_volume = clutter_stage_get_paint_volume;
@@ -1752,7 +1556,6 @@ clutter_stage_class_init (ClutterStageClass *klass)
   actor_class->unrealize = clutter_stage_unrealize;
   actor_class->show = clutter_stage_show;
   actor_class->hide = clutter_stage_hide;
-  actor_class->queue_relayout = clutter_stage_real_queue_relayout;
   actor_class->queue_redraw = clutter_stage_real_queue_redraw;
   actor_class->apply_transform = clutter_stage_real_apply_transform;
 
@@ -2099,7 +1902,7 @@ clutter_stage_init (ClutterStage *self)
   priv->fog.z_near = 1.0;
   priv->fog.z_far  = 2.0;
 
-  priv->relayout_pending = TRUE;
+  priv->redraw_pending = TRUE;
 
   clutter_actor_set_reactive (CLUTTER_ACTOR (self), TRUE);
   clutter_stage_set_title (self, g_get_prgname ());
@@ -2397,7 +2200,7 @@ clutter_stage_set_fullscreen (ClutterStage *stage,
    * will recieve a ConfigureNotify after a successful resize which is how
    * we ensure the viewport is updated on X.
    */
-  clutter_actor_queue_relayout (CLUTTER_ACTOR (stage));
+  clutter_actor_queue_redraw (CLUTTER_ACTOR (stage));
 }
 
 /**
@@ -3155,7 +2958,6 @@ clutter_stage_ensure_redraw (ClutterStage *stage)
   g_return_if_fail (CLUTTER_IS_STAGE (stage));
 
   priv = stage->priv;
-  priv->relayout_pending = TRUE;
   priv->redraw_pending = TRUE;
 
   master_clock = _clutter_master_clock_get_default ();
@@ -3293,89 +3095,6 @@ clutter_stage_get_use_alpha (ClutterStage *stage)
   g_return_val_if_fail (CLUTTER_IS_STAGE (stage), FALSE);
 
   return stage->priv->use_alpha;
-}
-
-/**
- * clutter_stage_set_minimum_size:
- * @stage: a #ClutterStage
- * @width: width, in pixels
- * @height: height, in pixels
- *
- * Sets the minimum size for a stage window, if the default backend
- * uses #ClutterStage inside a window
- *
- * This is a convenience function, and it is equivalent to setting the
- * #ClutterActor:min-width and #ClutterActor:min-height on @stage
- *
- * If the current size of @stage is smaller than the minimum size, the
- * @stage will be resized to the new @width and @height
- *
- * This function has no effect if @stage is fullscreen
- *
- * Since: 1.2
- */
-void
-clutter_stage_set_minimum_size (ClutterStage *stage,
-                                guint         width,
-                                guint         height)
-{
-  g_return_if_fail (CLUTTER_IS_STAGE (stage));
-  g_return_if_fail ((width > 0) && (height > 0));
-
-  g_object_set (G_OBJECT (stage),
-                "min-width", (gfloat) width,
-                "min-height", (gfloat )height,
-                NULL);
-}
-
-/**
- * clutter_stage_get_minimum_size:
- * @stage: a #ClutterStage
- * @width: (out): return location for the minimum width, in pixels,
- *   or %NULL
- * @height: (out): return location for the minimum height, in pixels,
- *   or %NULL
- *
- * Retrieves the minimum size for a stage window as set using
- * clutter_stage_set_minimum_size().
- *
- * The returned size may not correspond to the actual minimum size and
- * it is specific to the #ClutterStage implementation inside the
- * Clutter backend
- *
- * Since: 1.2
- */
-void
-clutter_stage_get_minimum_size (ClutterStage *stage,
-                                guint        *width_p,
-                                guint        *height_p)
-{
-  gfloat width, height;
-  gboolean width_set, height_set;
-
-  g_return_if_fail (CLUTTER_IS_STAGE (stage));
-
-  g_object_get (G_OBJECT (stage),
-                "min-width", &width,
-                "min-width-set", &width_set,
-                "min-height", &height,
-                "min-height-set", &height_set,
-                NULL);
-
-  /* if not width or height have been set, then the Stage
-   * minimum size is defined to be 1x1
-   */
-  if (!width_set)
-    width = 1;
-
-  if (!height_set)
-    height = 1;
-
-  if (width_p)
-    *width_p = (guint) width;
-
-  if (height_p)
-    *height_p = (guint) height;
 }
 
 /* Returns the number of swap buffers pending completion for the stage */

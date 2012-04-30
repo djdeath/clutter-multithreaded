@@ -72,53 +72,6 @@ struct _ClutterClonePrivate
 
 static void clutter_clone_set_source_internal (ClutterClone *clone,
 					       ClutterActor *source);
-static void
-clutter_clone_get_preferred_width (ClutterActor *self,
-                                   gfloat        for_height,
-                                   gfloat       *min_width_p,
-                                   gfloat       *natural_width_p)
-{
-  ClutterClonePrivate *priv = CLUTTER_CLONE (self)->priv;
-  ClutterActor *clone_source = priv->clone_source;
-
-  if (clone_source == NULL)
-    {
-      if (min_width_p)
-        *min_width_p = 0;
-
-      if (natural_width_p)
-        *natural_width_p = 0;
-    }
-  else
-    clutter_actor_get_preferred_width (clone_source,
-                                       for_height,
-                                       min_width_p,
-                                       natural_width_p);
-}
-
-static void
-clutter_clone_get_preferred_height (ClutterActor *self,
-                                    gfloat        for_width,
-                                    gfloat       *min_height_p,
-                                    gfloat       *natural_height_p)
-{
-  ClutterClonePrivate *priv = CLUTTER_CLONE (self)->priv;
-  ClutterActor *clone_source = priv->clone_source;
-
-  if (clone_source == NULL)
-    {
-      if (min_height_p)
-        *min_height_p = 0;
-
-      if (natural_height_p)
-        *natural_height_p = 0;
-    }
-  else
-    clutter_actor_get_preferred_height (clone_source,
-                                        for_width,
-                                        min_height_p,
-                                        natural_height_p);
-}
 
 static void
 clutter_clone_apply_transform (ClutterActor *self, CoglMatrix *matrix)
@@ -234,38 +187,6 @@ clutter_clone_has_overlaps (ClutterActor *actor)
 }
 
 static void
-clutter_clone_allocate (ClutterActor           *self,
-                        const ClutterActorBox  *box,
-                        ClutterAllocationFlags  flags)
-{
-  ClutterClonePrivate *priv = CLUTTER_CLONE (self)->priv;
-  ClutterActorClass *parent_class;
-
-  /* chain up */
-  parent_class = CLUTTER_ACTOR_CLASS (clutter_clone_parent_class);
-  parent_class->allocate (self, box, flags);
-
-  if (priv->clone_source == NULL)
-    return;
-
-#if 0
-  /* XXX - this is wrong: ClutterClone cannot clone unparented
-   * actors, as it will break all invariants
-   */
-
-  /* we act like a "foster parent" for the source we are cloning;
-   * if the source has not been parented we have to force an
-   * allocation on it, so that we can paint it correctly from
-   * within our paint() implementation. since the actor does not
-   * have a parent, and thus it won't be painted by the usual
-   * paint cycle, we can safely give it as much size as it requires
-   */
-  if (clutter_actor_get_parent (priv->clone_source) == NULL)
-    clutter_actor_allocate_preferred_size (priv->clone_source, flags);
-#endif
-}
-
-static void
 clutter_clone_set_property (GObject      *gobject,
                             guint         prop_id,
                             const GValue *value,
@@ -324,9 +245,6 @@ clutter_clone_class_init (ClutterCloneClass *klass)
   actor_class->apply_transform = clutter_clone_apply_transform;
   actor_class->paint = clutter_clone_paint;
   actor_class->get_paint_volume = clutter_clone_get_paint_volume;
-  actor_class->get_preferred_width = clutter_clone_get_preferred_width;
-  actor_class->get_preferred_height = clutter_clone_get_preferred_height;
-  actor_class->allocate = clutter_clone_allocate;
   actor_class->has_overlaps = clutter_clone_has_overlaps;
 
   gobject_class->dispose = clutter_clone_dispose;
@@ -386,13 +304,6 @@ clone_source_queue_redraw_cb (ClutterActor *source,
 }
 
 static void
-clone_source_queue_relayout_cb (ClutterActor *source,
-				ClutterClone *self)
-{
-  clutter_actor_queue_relayout (CLUTTER_ACTOR (self));
-}
-
-static void
 clutter_clone_set_source_internal (ClutterClone *self,
 				   ClutterActor *source)
 {
@@ -403,9 +314,6 @@ clutter_clone_set_source_internal (ClutterClone *self,
       g_signal_handlers_disconnect_by_func (priv->clone_source,
                                             G_CALLBACK (clone_source_queue_redraw_cb),
 					    self);
-      g_signal_handlers_disconnect_by_func (priv->clone_source,
-					    G_CALLBACK (clone_source_queue_relayout_cb),
-					    self);
       g_object_unref (priv->clone_source);
       priv->clone_source = NULL;
     }
@@ -415,13 +323,11 @@ clutter_clone_set_source_internal (ClutterClone *self,
       priv->clone_source = g_object_ref (source);
       g_signal_connect (priv->clone_source, "queue-redraw",
 			G_CALLBACK (clone_source_queue_redraw_cb), self);
-      g_signal_connect (priv->clone_source, "queue-relayout",
-			G_CALLBACK (clone_source_queue_relayout_cb), self);
     }
 
   g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_SOURCE]);
 
-  clutter_actor_queue_relayout (CLUTTER_ACTOR (self));
+  clutter_actor_queue_redraw (CLUTTER_ACTOR (self));
 }
 
 /**
@@ -441,7 +347,7 @@ clutter_clone_set_source (ClutterClone *self,
   g_return_if_fail (source == NULL || CLUTTER_IS_ACTOR (source));
 
   clutter_clone_set_source_internal (self, source);
-  clutter_actor_queue_relayout (CLUTTER_ACTOR (self));
+  clutter_actor_queue_redraw (CLUTTER_ACTOR (self));
 }
 
 /**

@@ -30,7 +30,6 @@ UNIT_TESTS = \
 	test-clip.c \
 	test-paint-wrapper.c \
 	test-texture-quality.c \
-	test-layout.c \
         test-easing.c \
         test-binding-pool.c \
         test-text.c \
@@ -38,27 +37,22 @@ UNIT_TESTS = \
 	test-cairo-clock.c \
 	test-cairo-flowers.c \
 	test-cogl-vertex-buffer.c \
-	test-flow-layout.c \
-	test-box-layout.c \
 	test-stage-sizing.c \
 	test-cogl-point-sprites.c \
-	test-table-layout.c \
 	test-state-script.c \
 	test-devices.c \
 	test-actor.c \
-	test-transitions.c \
-	test-content.c \
-	test-canvas.c
+	test-transitions.c
 
 if X11_TESTS
 UNIT_TESTS += test-pixmap.c
 endif
 
-if PIXBUF_TESTS
-UNIT_TESTS += \
-	test-image.c \
-	test-image-box.c
-endif
+# if PIXBUF_TESTS
+# UNIT_TESTS += \
+# 	test-image.c \
+# 	test-image-box.c
+# endif
 
 if OS_WIN32
 SHEXT =

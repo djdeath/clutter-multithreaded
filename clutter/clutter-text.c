@@ -88,6 +88,8 @@ static const ClutterColor default_selected_text_color = {   0,   0,   0, 255 };
 
 static void clutter_scriptable_iface_init (ClutterScriptableIface *iface);
 
+static void clutter_text_allocate (ClutterText *self);
+
 G_DEFINE_TYPE_WITH_CODE (ClutterText,
                          clutter_text,
                          CLUTTER_TYPE_ACTOR,
@@ -280,7 +282,7 @@ clutter_text_dirty_paint_volume (ClutterText *text)
 }
 
 static inline void
-clutter_text_queue_redraw (ClutterActor *self)
+clutter_text_queue_redraw (ClutterText *self)
 {
   /* This is a wrapper for clutter_actor_queue_redraw that also
      dirties the cached paint volume. It would be nice if we could
@@ -290,9 +292,9 @@ clutter_text_queue_redraw (ClutterActor *self)
      Clutter will however immediately call get_paint_volume when
      queue_redraw is called so we do need to dirty it immediately. */
 
-  clutter_text_dirty_paint_volume (CLUTTER_TEXT (self));
+  clutter_text_dirty_paint_volume (self);
 
-  clutter_actor_queue_redraw (self);
+  clutter_actor_queue_redraw (CLUTTER_ACTOR (self));
 }
 
 #define clutter_actor_queue_redraw \
@@ -327,7 +329,7 @@ clutter_text_clear_selection (ClutterText *self)
     {
       priv->selection_bound = priv->position;
       g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_SELECTION_BOUND]);
-      clutter_text_queue_redraw (CLUTTER_ACTOR (self));
+      clutter_text_queue_redraw (self);
     }
 }
 
@@ -576,7 +578,7 @@ clutter_text_set_font_description_internal (ClutterText          *self,
   clutter_text_dirty_cache (self);
 
   if (clutter_text_buffer_get_length (get_buffer (self)) != 0)
-    clutter_actor_queue_relayout (CLUTTER_ACTOR (self));
+    clutter_text_allocate (self);
 
   g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_FONT_DESCRIPTION]);
 }
@@ -613,7 +615,7 @@ clutter_text_settings_changed_cb (ClutterText *text)
     }
 
   clutter_text_dirty_cache (text);
-  clutter_actor_queue_relayout (CLUTTER_ACTOR (text));
+  clutter_text_allocate (text);
 }
 
 static void
@@ -2003,13 +2005,13 @@ clutter_text_paint (ClutterActor *self)
   ClutterText *text = CLUTTER_TEXT (self);
   ClutterTextPrivate *priv = text->priv;
   PangoLayout *layout;
-  ClutterActorBox alloc = { 0, };
   CoglColor color = { 0, };
   guint8 real_opacity;
   gint text_x = priv->text_x;
   gboolean clip_set = FALSE;
   gboolean bg_color_set = FALSE;
   guint n_chars;
+  gfloat width, height;
 
   /* Note that if anything in this paint method changes it needs to be
      reflected in the get_paint_volume implementation which is tightly
@@ -2024,7 +2026,7 @@ clutter_text_paint (ClutterActor *self)
   if (n_chars == 0 && (!priv->editable || !priv->cursor_visible))
     return;
 
-  clutter_actor_get_allocation_box (self, &alloc);
+  clutter_actor_get_size (self, &width, &height);
 
   g_object_get (self, "background-color-set", &bg_color_set, NULL);
   if (bg_color_set)
@@ -2040,7 +2042,7 @@ clutter_text_paint (ClutterActor *self)
                                 bg_color.green,
                                 bg_color.blue,
                                 bg_color.alpha);
-      cogl_rectangle (0, 0, alloc.x2 - alloc.x1, alloc.y2 - alloc.y1);
+      cogl_rectangle (0, 0, width, height);
     }
 
   if (priv->editable && priv->single_line_mode)
@@ -2053,9 +2055,7 @@ clutter_text_paint (ClutterActor *self)
        */
       if (priv->wrap && priv->ellipsize)
         {
-          layout = clutter_text_create_layout (text,
-                                               alloc.x2 - alloc.x1,
-                                               alloc.y2 - alloc.y1);
+          layout = clutter_text_create_layout (text, width, height);
         }
       else
         {
@@ -2072,9 +2072,7 @@ clutter_text_paint (ClutterActor *self)
            * in the assigned width, then we clip the actor if the
            * logical rectangle overflows the allocation.
            */
-          layout = clutter_text_create_layout (text,
-                                               alloc.x2 - alloc.x1,
-                                               -1);
+          layout = clutter_text_create_layout (text, width, -1);
         }
     }
 
@@ -2088,12 +2086,10 @@ clutter_text_paint (ClutterActor *self)
 
       pango_layout_get_extents (layout, NULL, &logical_rect);
 
-      cogl_clip_push_rectangle (0, 0,
-                                (alloc.x2 - alloc.x1),
-                                (alloc.y2 - alloc.y1));
+      cogl_clip_push_rectangle (0, 0, width, height);
       clip_set = TRUE;
 
-      actor_width = (alloc.x2 - alloc.x1)
+      actor_width = (width)
                   - 2 * TEXT_PADDING;
       text_width  = logical_rect.width / PANGO_SCALE;
 
@@ -2133,12 +2129,10 @@ clutter_text_paint (ClutterActor *self)
       pango_layout_get_pixel_extents (layout, NULL, &logical_rect);
 
       /* don't clip if the layout managed to fit inside our allocation */
-      if (logical_rect.width > (alloc.x2 - alloc.x1) ||
-          logical_rect.height > (alloc.y2 - alloc.y1))
+      if (logical_rect.width > width ||
+          logical_rect.height > height)
         {
-          cogl_clip_push_rectangle (0, 0,
-                                    alloc.x2 - alloc.x1,
-                                    alloc.y2 - alloc.y1);
+          cogl_clip_push_rectangle (0, 0, width, height);
           clip_set = TRUE;
         }
 
@@ -2239,6 +2233,7 @@ clutter_text_get_paint_volume (ClutterActor       *self,
       PangoLayout *layout;
       PangoRectangle ink_rect;
       ClutterVertex origin;
+      gfloat width, height;
 
       /* If the text is single line editable then it gets clipped to
          the allocation anyway so we can just use that */
@@ -2250,7 +2245,8 @@ clutter_text_get_paint_volume (ClutterActor       *self,
       if (G_OBJECT_TYPE (self) != CLUTTER_TYPE_TEXT)
         return FALSE;
 
-      if (!clutter_actor_has_allocation (self))
+      clutter_actor_get_size (self, &width, &height);
+      if (width < 0 || height < 0)
         return FALSE;
 
       _clutter_paint_volume_init_static (&priv->paint_volume, self);
@@ -2293,121 +2289,13 @@ clutter_text_get_paint_volume (ClutterActor       *self,
 }
 
 static void
-clutter_text_get_preferred_width (ClutterActor *self,
-                                  gfloat        for_height,
-                                  gfloat       *min_width_p,
-                                  gfloat       *natural_width_p)
+clutter_text_allocate (ClutterText *self)
 {
-  ClutterText *text = CLUTTER_TEXT (self);
-  ClutterTextPrivate *priv = text->priv;
-  PangoRectangle logical_rect = { 0, };
   PangoLayout *layout;
-  gint logical_width;
-  gfloat layout_width;
+  PangoRectangle logical_rect = { 0, };
 
-  layout = clutter_text_create_layout (text, -1, -1);
-
-  pango_layout_get_extents (layout, NULL, &logical_rect);
-
-  /* the X coordinate of the logical rectangle might be non-zero
-   * according to the Pango documentation; hence, we need to offset
-   * the width accordingly
-   */
-  logical_width = logical_rect.x + logical_rect.width;
-
-  layout_width = logical_width > 0
-    ? ceilf (logical_width / 1024.0f)
-    : 1;
-
-  if (min_width_p)
-    {
-      if (priv->wrap || priv->ellipsize || priv->editable)
-        *min_width_p = 1;
-      else
-        *min_width_p = layout_width;
-    }
-
-  if (natural_width_p)
-    {
-      if (priv->editable && priv->single_line_mode)
-        *natural_width_p = layout_width + TEXT_PADDING * 2;
-      else
-        *natural_width_p = layout_width;
-    }
-}
-
-static void
-clutter_text_get_preferred_height (ClutterActor *self,
-                                   gfloat        for_width,
-                                   gfloat       *min_height_p,
-                                   gfloat       *natural_height_p)
-{
-  ClutterTextPrivate *priv = CLUTTER_TEXT (self)->priv;
-
-  if (for_width == 0)
-    {
-      if (min_height_p)
-        *min_height_p = 0;
-
-      if (natural_height_p)
-        *natural_height_p = 0;
-    }
-  else
-    {
-      PangoLayout *layout;
-      PangoRectangle logical_rect = { 0, };
-      gint logical_height;
-      gfloat layout_height;
-
-      if (priv->single_line_mode)
-        for_width = -1;
-
-      layout = clutter_text_create_layout (CLUTTER_TEXT (self),
-                                           for_width, -1);
-
-      pango_layout_get_extents (layout, NULL, &logical_rect);
-
-      /* the Y coordinate of the logical rectangle might be non-zero
-       * according to the Pango documentation; hence, we need to offset
-       * the height accordingly
-       */
-      logical_height = logical_rect.y + logical_rect.height;
-      layout_height = ceilf (logical_height / 1024.0f);
-
-      if (min_height_p)
-        {
-          /* if we wrap and ellipsize then the minimum height is
-           * going to be at least the size of the first line
-           */
-          if ((priv->ellipsize && priv->wrap) && !priv->single_line_mode)
-            {
-              PangoLayoutLine *line;
-              gfloat line_height;
-
-              line = pango_layout_get_line_readonly (layout, 0);
-              pango_layout_line_get_extents (line, NULL, &logical_rect);
-
-              logical_height = logical_rect.y + logical_rect.height;
-              line_height = ceilf (logical_height / 1024.0f);
-
-              *min_height_p = line_height;
-            }
-          else
-            *min_height_p = layout_height;
-        }
-
-      if (natural_height_p)
-        *natural_height_p = layout_height;
-    }
-}
-
-static void
-clutter_text_allocate (ClutterActor           *self,
-                       const ClutterActorBox  *box,
-                       ClutterAllocationFlags  flags)
-{
-  ClutterText *text = CLUTTER_TEXT (self);
-  ClutterActorClass *parent_class;
+  /* ClutterText *text = CLUTTER_TEXT (self); */
+  /* ClutterActorClass *parent_class; */
 
   /* Ensure that there is a cached layout with the right width so
    * that we don't need to create the text during the paint run
@@ -2416,15 +2304,18 @@ clutter_text_allocate (ClutterActor           *self,
    * to have any limit on the layout size, since the paint will clip
    * it to the allocation of the actor
    */
-  if (text->priv->editable && text->priv->single_line_mode)
-    clutter_text_create_layout (text, -1, -1);
-  else
-    clutter_text_create_layout (text,
-                                box->x2 - box->x1,
-                                box->y2 - box->y1);
+  /* if (text->priv->editable && text->priv->single_line_mode) */
+  layout = clutter_text_create_layout (self, -1, -1);
+  pango_layout_get_extents (layout, NULL, &logical_rect);
+  clutter_actor_set_size (CLUTTER_ACTOR (self),
+                          logical_rect.x + logical_rect.width,
+                          logical_rect.y + logical_rect.height);
+  clutter_text_queue_redraw (self);
 
-  parent_class = CLUTTER_ACTOR_CLASS (clutter_text_parent_class);
-  parent_class->allocate (self, box, flags);
+    /* else */
+  /*   clutter_text_create_layout (text, */
+  /*                               box->x2 - box->x1, */
+  /*                               box->y2 - box->y1); */
 }
 
 static gboolean
@@ -2440,21 +2331,23 @@ clutter_text_has_overlaps (ClutterActor *self)
 static void
 clutter_text_key_focus_in (ClutterActor *actor)
 {
-  ClutterTextPrivate *priv = CLUTTER_TEXT (actor)->priv;
+  ClutterText *self = CLUTTER_TEXT (actor);
+  ClutterTextPrivate *priv = self->priv;
 
   priv->has_focus = TRUE;
 
-  clutter_text_queue_redraw (actor);
+  clutter_text_queue_redraw (self);
 }
 
 static void
 clutter_text_key_focus_out (ClutterActor *actor)
 {
-  ClutterTextPrivate *priv = CLUTTER_TEXT (actor)->priv;
+  ClutterText *self = CLUTTER_TEXT (actor);
+  ClutterTextPrivate *priv = self->priv;
 
   priv->has_focus = FALSE;
 
-  clutter_text_queue_redraw (actor);
+  clutter_text_queue_redraw (self);
 }
 
 static gboolean
@@ -2945,9 +2838,6 @@ clutter_text_class_init (ClutterTextClass *klass)
 
   actor_class->paint = clutter_text_paint;
   actor_class->get_paint_volume = clutter_text_get_paint_volume;
-  actor_class->get_preferred_width = clutter_text_get_preferred_width;
-  actor_class->get_preferred_height = clutter_text_get_preferred_height;
-  actor_class->allocate = clutter_text_allocate;
   actor_class->key_press_event = clutter_text_key_press;
   actor_class->button_press_event = clutter_text_button_press;
   actor_class->button_release_event = clutter_text_button_release;
@@ -3857,8 +3747,7 @@ buffer_notify_text (ClutterTextBuffer *buffer,
   g_object_freeze_notify (G_OBJECT (self));
 
   clutter_text_dirty_cache (self);
-
-  clutter_actor_queue_relayout (CLUTTER_ACTOR (self));
+  clutter_text_allocate (self);
 
   g_signal_emit (self, text_signals[TEXT_CHANGED], 0);
   g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_TEXT]);
@@ -4003,7 +3892,7 @@ clutter_text_set_editable (ClutterText *self,
     {
       priv->editable = editable;
 
-      clutter_text_queue_redraw (CLUTTER_ACTOR (self));
+      clutter_text_queue_redraw (self);
 
       g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_EDITABLE]);
     }
@@ -4053,7 +3942,7 @@ clutter_text_set_selectable (ClutterText *self,
     {
       priv->selectable = selectable;
 
-      clutter_text_queue_redraw (CLUTTER_ACTOR (self));
+      clutter_text_queue_redraw (self);
 
       g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_SELECTABLE]);
     }
@@ -4107,7 +3996,7 @@ clutter_text_set_activatable (ClutterText *self,
     {
       priv->activatable = activatable;
 
-      clutter_text_queue_redraw (CLUTTER_ACTOR (self));
+      clutter_text_queue_redraw (self);
 
       g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_ACTIVATABLE]);
     }
@@ -4198,7 +4087,7 @@ clutter_text_set_cursor_visible (ClutterText *self,
     {
       priv->cursor_visible = cursor_visible;
 
-      clutter_text_queue_redraw (CLUTTER_ACTOR (self));
+      clutter_text_queue_redraw (self);
 
       g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_CURSOR_VISIBLE]);
     }
@@ -4252,7 +4141,7 @@ clutter_text_set_cursor_color (ClutterText        *self,
   else
     priv->cursor_color_set = FALSE;
 
-  clutter_text_queue_redraw (CLUTTER_ACTOR (self));
+  clutter_text_queue_redraw (self);
 
   g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_CURSOR_COLOR]);
   g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_CURSOR_COLOR_SET]);
@@ -4395,7 +4284,7 @@ clutter_text_set_selection_bound (ClutterText *self,
       else
         priv->selection_bound = selection_bound;
 
-      clutter_text_queue_redraw (CLUTTER_ACTOR (self));
+      clutter_text_queue_redraw (self);
 
       g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_SELECTION_BOUND]);
     }
@@ -4451,7 +4340,7 @@ clutter_text_set_selection_color (ClutterText        *self,
   else
     priv->selection_color_set = FALSE;
 
-  clutter_text_queue_redraw (CLUTTER_ACTOR (self));
+  clutter_text_queue_redraw (self);
 
   g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_SELECTION_COLOR]);
   g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_SELECTION_COLOR_SET]);
@@ -4510,7 +4399,7 @@ clutter_text_set_selected_text_color (ClutterText        *self,
   else
     priv->selected_text_color_set = FALSE;
 
-  clutter_text_queue_redraw (CLUTTER_ACTOR (self));
+  clutter_text_queue_redraw (self);
 
   g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_SELECTED_TEXT_COLOR]);
   g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_SELECTED_TEXT_COLOR_SET]);
@@ -4860,7 +4749,7 @@ clutter_text_set_color (ClutterText        *self,
 
   priv->text_color = *color;
 
-  clutter_text_queue_redraw (CLUTTER_ACTOR (self));
+  clutter_text_queue_redraw (self);
 
   g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_COLOR]);
 }
@@ -4916,8 +4805,7 @@ clutter_text_set_ellipsize (ClutterText        *self,
       priv->ellipsize = mode;
 
       clutter_text_dirty_cache (self);
-
-      clutter_actor_queue_relayout (CLUTTER_ACTOR (self));
+      clutter_text_allocate (self);
 
       g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_ELLIPSIZE]);
     }
@@ -4986,8 +4874,7 @@ clutter_text_set_line_wrap (ClutterText *self,
       priv->wrap = line_wrap;
 
       clutter_text_dirty_cache (self);
-
-      clutter_actor_queue_relayout (CLUTTER_ACTOR (self));
+      clutter_text_allocate (self);
 
       g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_LINE_WRAP]);
     }
@@ -5019,8 +4906,7 @@ clutter_text_set_line_wrap_mode (ClutterText   *self,
       priv->wrap_mode = wrap_mode;
 
       clutter_text_dirty_cache (self);
-
-      clutter_actor_queue_relayout (CLUTTER_ACTOR (self));
+      clutter_text_allocate (self);
 
       g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_LINE_WRAP_MODE]);
     }
@@ -5089,7 +4975,7 @@ clutter_text_set_attributes (ClutterText   *self,
 
   g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_ATTRIBUTES]);
 
-  clutter_actor_queue_relayout (CLUTTER_ACTOR (self));
+  clutter_text_allocate (self);
 }
 
 /**
@@ -5141,8 +5027,7 @@ clutter_text_set_line_alignment (ClutterText    *self,
       priv->alignment = alignment;
 
       clutter_text_dirty_cache (self);
-
-      clutter_actor_queue_relayout (CLUTTER_ACTOR (self));
+      clutter_text_allocate (self);
 
       g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_LINE_ALIGNMENT]);
     }
@@ -5198,8 +5083,7 @@ clutter_text_set_use_markup (ClutterText *self,
     clutter_text_set_markup_internal (self, text);
 
   clutter_text_dirty_cache (self);
-
-  clutter_actor_queue_relayout (CLUTTER_ACTOR (self));
+  clutter_text_allocate (self);
 }
 
 /**
@@ -5247,8 +5131,7 @@ clutter_text_set_justify (ClutterText *self,
       priv->justify = justify;
 
       clutter_text_dirty_cache (self);
-
-      clutter_actor_queue_relayout (CLUTTER_ACTOR (self));
+      clutter_text_allocate (self);
 
       g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_JUSTIFY]);
     }
@@ -5327,7 +5210,7 @@ clutter_text_set_cursor_position (ClutterText *self,
      time the cursor is moved up or down */
   priv->x_pos = -1;
 
-  clutter_text_queue_redraw (CLUTTER_ACTOR (self));
+  clutter_text_queue_redraw (self);
 
   g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_POSITION]);
 }
@@ -5361,7 +5244,7 @@ clutter_text_set_cursor_size (ClutterText *self,
 
       priv->cursor_size = size;
 
-      clutter_text_queue_redraw (CLUTTER_ACTOR (self));
+      clutter_text_queue_redraw (self);
 
       g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_CURSOR_SIZE]);
     }
@@ -5413,7 +5296,7 @@ clutter_text_set_password_char (ClutterText *self,
       priv->password_char = wc;
 
       clutter_text_dirty_cache (self);
-      clutter_actor_queue_relayout (CLUTTER_ACTOR (self));
+      clutter_text_allocate (self);
 
       g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_PASSWORD_CHAR]);
     }
@@ -5674,7 +5557,7 @@ clutter_text_set_single_line_mode (ClutterText *self,
         }
 
       clutter_text_dirty_cache (self);
-      clutter_actor_queue_relayout (CLUTTER_ACTOR (self));
+      clutter_text_allocate (self);
 
       g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_SINGLE_LINE_MODE]);
 
@@ -5764,7 +5647,7 @@ clutter_text_set_preedit_string (ClutterText   *self,
     }
 
   clutter_text_dirty_cache (self);
-  clutter_actor_queue_relayout (CLUTTER_ACTOR (self));
+  clutter_text_queue_redraw (self);
 }
 
 

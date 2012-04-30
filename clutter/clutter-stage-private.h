@@ -57,7 +57,6 @@ void                _clutter_stage_get_viewport          (ClutterStage          
                                                           float                 *height);
 void                _clutter_stage_dirty_viewport        (ClutterStage          *stage);
 void                _clutter_stage_maybe_setup_viewport  (ClutterStage          *stage);
-void                _clutter_stage_maybe_relayout        (ClutterActor          *stage);
 gboolean            _clutter_stage_needs_update          (ClutterStage          *stage);
 gboolean            _clutter_stage_do_update             (ClutterStage          *stage);
 

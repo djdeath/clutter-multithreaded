@@ -157,17 +157,13 @@ key_group_paint (ClutterActor *actor)
       /* paint the selection rectangle */
       if (i == self->selected_index)
         {
-          ClutterActorBox box = { 0, };
+          gfloat width, height;
+          /* ClutterActorBox box = { 0, }; */
 
-          clutter_actor_get_allocation_box (child, &box);
-
-          box.x1 -= 2;
-          box.y1 -= 2;
-          box.x2 += 2;
-          box.y2 += 2;
+          clutter_actor_get_size (child, &width, &height);
 
           cogl_set_source_color4ub (255, 255, 0, 224);
-          cogl_rectangle (box.x1, box.y1, box.x2, box.y2);
+          cogl_rectangle (-2, -2, width + 2, height + 2);
         }
 
       clutter_actor_paint (child);

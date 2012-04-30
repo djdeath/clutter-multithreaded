@@ -138,7 +138,7 @@ clutter_stage_x11_fix_window_size (ClutterStageX11 *stage_x11,
 
   if (stage_x11->xwin != None && !stage_x11->is_foreign_xwin)
     {
-      guint min_width, min_height;
+      /* guint min_width, min_height; */
       XSizeHints *size_hints;
       gboolean resize;
 
@@ -146,15 +146,15 @@ clutter_stage_x11_fix_window_size (ClutterStageX11 *stage_x11,
 
       size_hints = XAllocSizeHints();
 
-      clutter_stage_get_minimum_size (stage_cogl->wrapper,
-                                      &min_width,
-                                      &min_height);
+      /* clutter_stage_get_minimum_size (stage_cogl->wrapper, */
+      /*                                 &min_width, */
+      /*                                 &min_height); */
 
-      if (new_width <= 0)
-        new_width = min_width;
+      /* if (new_width <= 0) */
+      /*   new_width = min_width; */
 
-      if (new_height <= 0)
-        new_height = min_height;
+      /* if (new_height <= 0) */
+      /*   new_height = min_height; */
 
       size_hints->flags = 0;
 
@@ -164,8 +164,8 @@ clutter_stage_x11_fix_window_size (ClutterStageX11 *stage_x11,
         {
           if (resize)
             {
-              size_hints->min_width = min_width;
-              size_hints->min_height = min_height;
+              size_hints->min_width = /* min_width */10;
+              size_hints->min_height = /* min_height */10;
               size_hints->flags = PMinSize;
             }
           else
@@ -239,7 +239,6 @@ clutter_stage_x11_resize (ClutterStageWindow *stage_window,
        */
       stage_x11->xwin_width = width;
       stage_x11->xwin_height = height;
-      clutter_actor_queue_relayout (CLUTTER_ACTOR (stage_cogl->wrapper));
       return;
     }
 
@@ -1030,7 +1029,7 @@ clutter_stage_x11_translate_event (ClutterEventTranslator *translator,
                * Make sure we do this only when the size has changed,
                * otherwise we end up relayouting on window moves.
                */
-              clutter_actor_queue_relayout (CLUTTER_ACTOR (stage));
+              clutter_actor_queue_redraw (CLUTTER_ACTOR (stage));
 
               /* the resize process is complete, so we can ask the stage
                * to set up the GL viewport with the new size
@@ -1373,16 +1372,7 @@ clutter_x11_set_stage_foreign (ClutterStage *stage,
                             set_foreign_window_callback,
                             &fwd);
 
-  /* Queue a relayout - so the stage will be allocated the new
-   * window size.
-   *
-   * Note also that when the stage gets allocated the new
-   * window size that will result in the stage's
-   * priv->viewport being changed, which will in turn result
-   * in the Cogl viewport changing when _clutter_do_redraw
-   * calls _clutter_stage_maybe_setup_viewport().
-   */
-  clutter_actor_queue_relayout (actor);
+  clutter_actor_queue_redraw (actor);
 
   return TRUE;
 }

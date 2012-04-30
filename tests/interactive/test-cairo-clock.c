@@ -90,7 +90,7 @@ test_cairo_clock_main (int argc, char *argv[])
   clutter_actor_add_child (stage, canvas);
 
   /* make sure to match allocation to canvas size */
-  clutter_cairo_texture_set_auto_resize (CLUTTER_CAIRO_TEXTURE (canvas), TRUE);
+  /* clutter_cairo_texture_set_auto_resize (CLUTTER_CAIRO_TEXTURE (canvas), TRUE); */
 
   /* quit on destroy */
   g_signal_connect (stage, "destroy", G_CALLBACK (clutter_main_quit), NULL);

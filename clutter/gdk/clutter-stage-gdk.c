@@ -95,9 +95,8 @@ clutter_stage_gdk_set_gdk_geometry (ClutterStageGdk *stage)
     }
   else
     {
-      clutter_stage_get_minimum_size (wrapper,
-				      (guint *)&geometry.min_width,
-				      (guint *)&geometry.min_height);
+      geometry.min_width = 10;
+      geometry.min_height = 10;
 
       gdk_window_set_geometry_hints (stage->window,
 				     &geometry,
@@ -501,7 +500,7 @@ clutter_gdk_get_stage_window (ClutterStage *stage)
  * clutter_gdk_get_stage_from_window:
  * @window: a #GtkWindow
  *
- * Gets the stage for a particular X window.  
+ * Gets the stage for a particular X window.
  *
  * Return value: (transfer none): A #ClutterStage, or% NULL if a stage
  *   does not exist for the window
@@ -519,7 +518,7 @@ clutter_gdk_get_stage_from_window (GdkWindow *window)
   return NULL;
 }
 
-typedef struct 
+typedef struct
 {
   ClutterStageGdk *stage_gdk;
   GdkWindow *window;
@@ -599,7 +598,7 @@ clutter_gdk_set_stage_foreign (ClutterStage *stage,
    * in the Cogl viewport changing when _clutter_do_redraw
    * calls _clutter_stage_maybe_setup_viewport().
    */
-  clutter_actor_queue_relayout (actor);
+  clutter_actor_queue_redraw (actor);
 
   return TRUE;
 }

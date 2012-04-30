@@ -107,9 +107,9 @@ test_stage_sizing_main (int argc, char *argv[])
                             G_CALLBACK (expand_clicked_cb), stage);
   width += clutter_actor_get_width (rect);
 
-  clutter_stage_set_minimum_size (CLUTTER_STAGE (stage),
-                                  width,
-                                  clutter_actor_get_height (rect));
+  /* clutter_stage_set_minimum_size (CLUTTER_STAGE (stage), */
+  /*                                 width, */
+  /*                                 clutter_actor_get_height (rect)); */
 
   clutter_actor_show (stage);
 

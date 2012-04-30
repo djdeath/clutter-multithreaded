@@ -257,54 +257,54 @@ test_text_field_main (gint    argc,
   clutter_actor_set_background_color (stage, CLUTTER_COLOR_Black);
   g_signal_connect (stage, "destroy", G_CALLBACK (clutter_main_quit), NULL);
 
-  table = clutter_table_layout_new ();
-  clutter_table_layout_set_column_spacing (CLUTTER_TABLE_LAYOUT (table), 6);
-  clutter_table_layout_set_row_spacing (CLUTTER_TABLE_LAYOUT (table), 6);
+  /* table = clutter_table_layout_new (); */
+  /* clutter_table_layout_set_column_spacing (CLUTTER_TABLE_LAYOUT (table), 6); */
+  /* clutter_table_layout_set_row_spacing (CLUTTER_TABLE_LAYOUT (table), 6); */
 
   box = clutter_actor_new ();
-  clutter_actor_set_layout_manager (box, table);
+  /* clutter_actor_set_layout_manager (box, table); */
   clutter_actor_set_position (box, 12, 12);
   clutter_actor_add_child (stage, box);
 
   label = create_label (CLUTTER_COLOR_White, "<b>Input field:</b>");
   g_object_set (label, "min-width", 150.0, NULL);
   clutter_actor_add_child (box, label);
-  clutter_layout_manager_child_set (table, CLUTTER_CONTAINER (box), label,
-                                    "row", 0,
-                                    "column", 0,
-                                    "x-expand", FALSE,
-                                    "y-expand", FALSE,
-                                    NULL);
+  /* clutter_layout_manager_child_set (table, CLUTTER_CONTAINER (box), label, */
+  /*                                   "row", 0, */
+  /*                                   "column", 0, */
+  /*                                   "x-expand", FALSE, */
+  /*                                   "y-expand", FALSE, */
+  /*                                   NULL); */
 
   entry = create_entry (CLUTTER_COLOR_Black, "<i>some</i> text", 0, 0);
   clutter_actor_add_child (box, entry);
-  clutter_layout_manager_child_set (table, CLUTTER_CONTAINER (box), entry,
-                                    "row", 0,
-                                    "column", 1,
-                                    "x-expand", TRUE,
-                                    "x-fill", TRUE,
-                                    "y-expand", FALSE,
-                                    NULL);
+  /* clutter_layout_manager_child_set (table, CLUTTER_CONTAINER (box), entry, */
+  /*                                   "row", 0, */
+  /*                                   "column", 1, */
+  /*                                   "x-expand", TRUE, */
+  /*                                   "x-fill", TRUE, */
+  /*                                   "y-expand", FALSE, */
+  /*                                   NULL); */
   clutter_actor_grab_key_focus (entry);
 
   label = create_label (CLUTTER_COLOR_White, "<b>A very long password field:</b>");
   clutter_actor_add_child (box, label);
-  clutter_layout_manager_child_set (table, CLUTTER_CONTAINER (box), label,
-                                    "row", 1,
-                                    "column", 0,
-                                    "x-expand", FALSE,
-                                    "y-expand", FALSE,
-                                    NULL);
+  /* clutter_layout_manager_child_set (table, CLUTTER_CONTAINER (box), label, */
+  /*                                   "row", 1, */
+  /*                                   "column", 0, */
+  /*                                   "x-expand", FALSE, */
+  /*                                   "y-expand", FALSE, */
+  /*                                   NULL); */
 
   entry = create_entry (CLUTTER_COLOR_Black, "password", '*', 8);
   clutter_actor_add_child (box, entry);
-  clutter_layout_manager_child_set (table, CLUTTER_CONTAINER (box), entry,
-                                    "row", 1,
-                                    "column", 1,
-                                    "x-expand", TRUE,
-                                    "x-fill", TRUE,
-                                    "y-expand", FALSE,
-                                    NULL);
+  /* clutter_layout_manager_child_set (table, CLUTTER_CONTAINER (box), entry, */
+  /*                                   "row", 1, */
+  /*                                   "column", 1, */
+  /*                                   "x-expand", TRUE, */
+  /*                                   "x-fill", TRUE, */
+  /*                                   "y-expand", FALSE, */
+  /*                                   NULL); */
 
   clutter_actor_show (stage);
 

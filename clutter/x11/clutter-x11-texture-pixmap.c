@@ -344,8 +344,8 @@ clutter_x11_texture_pixmap_real_queue_damage_redraw (
 {
   ClutterX11TexturePixmapPrivate *priv = texture->priv;
   ClutterActor *self = CLUTTER_ACTOR (texture);
-  ClutterActorBox allocation;
   float scale_x, scale_y;
+  gfloat awidth, aheight;
   cairo_rectangle_int_t clip;
 
   /* NB: clutter_actor_queue_clipped_redraw expects a box in the actor's
@@ -353,25 +353,13 @@ clutter_x11_texture_pixmap_real_queue_damage_redraw (
    * actor coordinates...
    */
 
-  /* Calling clutter_actor_get_allocation_box() is enormously expensive
-   * if the actor has an out-of-date allocation, since it triggers
-   * a full redraw. clutter_actor_queue_clipped_redraw() would redraw
-   * the whole stage anyways in that case, so just go ahead and do
-   * it here.
-   */
-  if (!clutter_actor_has_allocation (self))
-    {
-      clutter_actor_queue_redraw (self);
-      return;
-    }
-
   if (priv->pixmap_width == 0 || priv->pixmap_height == 0)
     return;
 
-  clutter_actor_get_allocation_box (self, &allocation);
+  clutter_actor_get_size (self, &awidth, &aheight);
 
-  scale_x = (allocation.x2 - allocation.x1) / priv->pixmap_width;
-  scale_y = (allocation.y2 - allocation.y1) / priv->pixmap_height;
+  scale_x = awidth / priv->pixmap_width;
+  scale_y = aheight / priv->pixmap_height;
 
   clip.x = x * scale_x;
   clip.y = y * scale_y;
