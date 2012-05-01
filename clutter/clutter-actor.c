@@ -2956,11 +2956,14 @@ void
 clutter_actor_continue_paint (ClutterActor *self)
 {
   ClutterActorPrivate *priv;
+  ClutterActorClass *klass;
 
   g_return_if_fail (CLUTTER_IS_ACTOR (self));
   /* This should only be called from with in the ‘run’ implementation
      of a ClutterEffect */
   g_return_if_fail (CLUTTER_ACTOR_IN_PAINT (self));
+
+  klass = CLUTTER_ACTOR_GET_CLASS (self);
 
   priv = self->priv;
 
@@ -2975,7 +2978,7 @@ clutter_actor_continue_paint (ClutterActor *self)
     {
       if (_clutter_context_get_pick_mode () == CLUTTER_PICK_NONE)
         {
-          g_signal_emit (self, actor_signals[PAINT], 0);
+          klass->paint (self);
         }
       else
         {
@@ -2987,7 +2990,7 @@ clutter_actor_continue_paint (ClutterActor *self)
            * color.  See clutter_stage_get_actor_at_pos() for where
            * picking is enabled.
            */
-          g_signal_emit (self, actor_signals[PICK], 0, &col);
+          klass->pick (self, &col);
         }
     }
   else
@@ -5375,29 +5378,6 @@ clutter_actor_class_init (ClutterActorClass *klass)
 		  CLUTTER_TYPE_EVENT | G_SIGNAL_TYPE_STATIC_SCOPE);
 
   /**
-   * ClutterActor::paint:
-   * @actor: the #ClutterActor that received the signal
-   *
-   * The ::paint signal is emitted each time an actor is being painted.
-   *
-   * Subclasses of #ClutterActor should override the class signal handler
-   * and paint themselves in that function.
-   *
-   * It is possible to connect a handler to the ::paint signal in order
-   * to set up some custom aspect of a paint.
-   *
-   * Since: 0.8
-   */
-  actor_signals[PAINT] =
-    g_signal_new (I_("paint"),
-                  G_TYPE_FROM_CLASS (object_class),
-                  G_SIGNAL_RUN_LAST |
-                  G_SIGNAL_NO_HOOKS,
-                  G_STRUCT_OFFSET (ClutterActorClass, paint),
-                  NULL, NULL,
-                  _clutter_marshal_VOID__VOID,
-                  G_TYPE_NONE, 0);
-  /**
    * ClutterActor::realize:
    * @actor: the #ClutterActor that received the signal
    *
@@ -5431,34 +5411,6 @@ clutter_actor_class_init (ClutterActorClass *klass)
                   NULL, NULL,
                   _clutter_marshal_VOID__VOID,
                   G_TYPE_NONE, 0);
-
-  /**
-   * ClutterActor::pick:
-   * @actor: the #ClutterActor that received the signal
-   * @color: the #ClutterColor to be used when picking
-   *
-   * The ::pick signal is emitted each time an actor is being painted
-   * in "pick mode". The pick mode is used to identify the actor during
-   * the event handling phase, or by clutter_stage_get_actor_at_pos().
-   * The actor should paint its shape using the passed @pick_color.
-   *
-   * Subclasses of #ClutterActor should override the class signal handler
-   * and paint themselves in that function.
-   *
-   * It is possible to connect a handler to the ::pick signal in order
-   * to set up some custom aspect of a paint in pick mode.
-   *
-   * Since: 1.0
-   */
-  actor_signals[PICK] =
-    g_signal_new (I_("pick"),
-                  G_TYPE_FROM_CLASS (object_class),
-                  G_SIGNAL_RUN_LAST,
-                  G_STRUCT_OFFSET (ClutterActorClass, pick),
-                  NULL, NULL,
-                  _clutter_marshal_VOID__BOXED,
-                  G_TYPE_NONE, 1,
-                  CLUTTER_TYPE_COLOR | G_SIGNAL_TYPE_STATIC_SCOPE);
 
   /**
    * ClutterActor::transitions-completed:
@@ -10796,44 +10748,6 @@ _clutter_actor_get_paint_volume_real (ClutterActor *self,
                                       ClutterPaintVolume *pv)
 {
   ClutterActorPrivate *priv = self->priv;
-
-  /* Check if there are any handlers connected to the paint
-   * signal. If there are then all bets are off for what the paint
-   * volume for this actor might possibly be!
-   *
-   * XXX: It's expected that this is going to end up being quite a
-   * costly check to have to do here, but we haven't come up with
-   * another solution that can reliably catch paint signal handlers at
-   * the right time to either avoid artefacts due to invalid stage
-   * clipping or due to incorrect culling.
-   *
-   * Previously we checked in clutter_actor_paint(), but at that time
-   * we may already be using a stage clip that could be derived from
-   * an invalid paint-volume. We used to try and handle that by
-   * queuing a follow up, unclipped, redraw but still the previous
-   * checking wasn't enough to catch invalid volumes involved in
-   * culling (considering that containers may derive their volume from
-   * children that haven't yet been painted)
-   *
-   * Longer term, improved solutions could be:
-   * - Disallow painting in the paint signal, only allow using it
-   *   for tracking when paints happen. We can add another API that
-   *   allows monkey patching the paint of arbitrary actors but in a
-   *   more controlled way and that also supports modifying the
-   *   paint-volume.
-   * - If we could be notified somehow when signal handlers are
-   *   connected we wouldn't have to poll for handlers like this.
-   */
-  if (g_signal_has_handler_pending (self,
-                                    actor_signals[PAINT],
-                                    0,
-                                    TRUE))
-    {
-      CLUTTER_NOTE (CLIPPING, "Bail from get_paint_volume (%s): "
-                    "Actor has \"paint\" signal handlers",
-                    _clutter_actor_get_debug_name (self));
-      return FALSE;
-    }
 
   _clutter_paint_volume_init_static (pv, self);
 

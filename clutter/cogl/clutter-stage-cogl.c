@@ -235,6 +235,8 @@ clutter_stage_cogl_ignoring_redraw_clips (ClutterStageWindow *stage_window)
 {
   ClutterStageCogl *stage_cogl = CLUTTER_STAGE_COGL (stage_window);
 
+  return TRUE;
+
   /* NB: a clip width of 0 means a full stage redraw is required */
   if (stage_cogl->initialized_redraw_clip &&
       stage_cogl->bounding_redraw_clip.width == 0)
