@@ -637,22 +637,8 @@ enum
 
   PROP_NAME,
 
-  /* X, Y, WIDTH, HEIGHT are "do what I mean" properties;
-   * when set they force a size request, when gotten they
-   * get the allocation if the allocation is valid, and the
-   * request otherwise
-   */
-  PROP_X,
-  PROP_Y,
-  PROP_WIDTH,
-  PROP_HEIGHT,
-
-  PROP_DEPTH,
-
   PROP_CLIP,
   PROP_HAS_CLIP,
-
-  PROP_OPACITY,
 
   PROP_OFFSCREEN_REDIRECT,
 
@@ -661,22 +647,18 @@ enum
   PROP_REALIZED,
   PROP_REACTIVE,
 
-  PROP_SCALE_X,
-  PROP_SCALE_Y,
-  PROP_SCALE_CENTER_X,
-  PROP_SCALE_CENTER_Y,
-  PROP_SCALE_GRAVITY,
-
-  PROP_ROTATION_ANGLE_X,
-  PROP_ROTATION_ANGLE_Y,
-  PROP_ROTATION_ANGLE_Z,
   PROP_ROTATION_CENTER_X,
   PROP_ROTATION_CENTER_Y,
   PROP_ROTATION_CENTER_Z,
+
   /* This property only makes sense for the z rotation because the
      others would depend on the actor having a size along the
      z-axis */
   PROP_ROTATION_CENTER_Z_GRAVITY,
+
+  PROP_SCALE_CENTER_X,
+  PROP_SCALE_CENTER_Y,
+  PROP_SCALE_GRAVITY,
 
   PROP_ANCHOR_X,
   PROP_ANCHOR_Y,
@@ -689,7 +671,6 @@ enum
 
   PROP_EFFECT,
 
-  PROP_BACKGROUND_COLOR,
   PROP_BACKGROUND_COLOR_SET,
 
   PROP_FIRST_CHILD,
@@ -698,7 +679,35 @@ enum
   PROP_LAST
 };
 
+/* Animatable properties */
+enum
+{
+  PROP_ANIMATABLE_0,
+
+  PROP_OPACITY,
+
+  PROP_X,
+  PROP_Y,
+
+  PROP_WIDTH,
+  PROP_HEIGHT,
+
+  PROP_DEPTH,
+
+  PROP_SCALE_X,
+  PROP_SCALE_Y,
+
+  PROP_ROTATION_ANGLE_X,
+  PROP_ROTATION_ANGLE_Y,
+  PROP_ROTATION_ANGLE_Z,
+
+  PROP_BACKGROUND_COLOR,
+
+  PROP_ANIMATABLE_LAST
+};
+
 static GParamSpec *obj_props[PROP_LAST];
+static GParamSpec *obj_anim_props[PROP_ANIMATABLE_LAST];
 
 enum
 {
@@ -1783,51 +1792,6 @@ clutter_actor_store_old_geometry (ClutterActor    *self,
   box->y1 = info->fixed_y;
   box->x2 = box->x1 + priv->width;
   box->y1 = box->y1 + priv->height;
-}
-
-static inline void
-clutter_actor_notify_if_geometry_changed (ClutterActor          *self,
-                                          const ClutterActorBox *old)
-{
-  ClutterActorPrivate *priv = self->priv;
-  GObject *obj = G_OBJECT (self);
-  gfloat x, y;
-  gfloat width, height;
-  const ClutterTransformInfo *info;
-
-  g_object_freeze_notify (obj);
-
-  info = _clutter_actor_get_transform_info_or_defaults (self);
-
-  /* to avoid excessive requisition or allocation cycles we
-   * use the cached values.
-   *
-   * - if we don't have an allocation we assume that we need
-   *   to notify anyway
-   * - if we don't have a width or a height request we notify
-   *   width and height
-   * - if we have a valid allocation then we check the old
-   *   bounding box with the current allocation and we notify
-   *   the changes
-   */
-  x = info->fixed_x;
-  y = info->fixed_y;
-  width = priv->width;
-  height = priv->height;
-
-  if (x != old->x1)
-    g_object_notify_by_pspec (obj, obj_props[PROP_X]);
-
-  if (y != old->y1)
-    g_object_notify_by_pspec (obj, obj_props[PROP_Y]);
-
-  if (width != (old->x2 - old->x1))
-    g_object_notify_by_pspec (obj, obj_props[PROP_WIDTH]);
-
-  if (height != (old->y2 - old->y1))
-    g_object_notify_by_pspec (obj, obj_props[PROP_HEIGHT]);
-
-  g_object_thaw_notify (obj);
 }
 
 static void
@@ -3298,34 +3262,26 @@ clutter_actor_set_rotation_angle_internal (ClutterActor      *self,
                                            ClutterRotateAxis  axis,
                                            gdouble            angle)
 {
-  GObject *obj = G_OBJECT (self);
   ClutterTransformInfo *info;
 
   info = _clutter_actor_get_transform_info (self);
-
-  g_object_freeze_notify (obj);
 
   switch (axis)
     {
     case CLUTTER_X_AXIS:
       info->rx_angle = angle;
-      g_object_notify_by_pspec (obj, obj_props[PROP_ROTATION_ANGLE_X]);
       break;
 
     case CLUTTER_Y_AXIS:
       info->ry_angle = angle;
-      g_object_notify_by_pspec (obj, obj_props[PROP_ROTATION_ANGLE_Y]);
       break;
 
     case CLUTTER_Z_AXIS:
       info->rz_angle = angle;
-      g_object_notify_by_pspec (obj, obj_props[PROP_ROTATION_ANGLE_Z]);
       break;
     }
 
   self->priv->transform_valid = FALSE;
-
-  g_object_thaw_notify (obj);
 
   clutter_actor_queue_redraw (self);
 }
@@ -3345,17 +3301,17 @@ clutter_actor_set_rotation_angle (ClutterActor      *self,
     {
     case CLUTTER_X_AXIS:
       cur_angle_p = &info->rx_angle;
-      pspec = obj_props[PROP_ROTATION_ANGLE_X];
+      pspec = obj_anim_props[PROP_ROTATION_ANGLE_X];
       break;
 
     case CLUTTER_Y_AXIS:
       cur_angle_p = &info->ry_angle;
-      pspec = obj_props[PROP_ROTATION_ANGLE_Y];
+      pspec = obj_anim_props[PROP_ROTATION_ANGLE_Y];
       break;
 
     case CLUTTER_Z_AXIS:
       cur_angle_p = &info->rz_angle;
-      pspec = obj_props[PROP_ROTATION_ANGLE_Z];
+      pspec = obj_anim_props[PROP_ROTATION_ANGLE_Z];
       break;
     }
 
@@ -3437,7 +3393,7 @@ clutter_actor_set_scale_factor_internal (ClutterActor *self,
 
   info = _clutter_actor_get_transform_info (self);
 
-  if (pspec == obj_props[PROP_SCALE_X])
+  if (pspec == obj_anim_props[PROP_SCALE_X])
     info->scale_x = factor;
   else
     info->scale_y = factor;
@@ -3461,12 +3417,12 @@ clutter_actor_set_scale_factor (ClutterActor      *self,
   switch (axis)
     {
     case CLUTTER_X_AXIS:
-      pspec = obj_props[PROP_SCALE_X];
+      pspec = obj_anim_props[PROP_SCALE_X];
       scale_p = &info->scale_x;
       break;
 
     case CLUTTER_Y_AXIS:
-      pspec = obj_props[PROP_SCALE_Y];
+      pspec = obj_anim_props[PROP_SCALE_Y];
       scale_p = &info->scale_y;
       break;
 
@@ -3618,30 +3574,6 @@ clutter_actor_set_property (GObject      *object,
 
   switch (prop_id)
     {
-    case PROP_X:
-      clutter_actor_set_x (actor, g_value_get_float (value));
-      break;
-
-    case PROP_Y:
-      clutter_actor_set_y (actor, g_value_get_float (value));
-      break;
-
-    case PROP_WIDTH:
-      clutter_actor_set_width (actor, g_value_get_float (value));
-      break;
-
-    case PROP_HEIGHT:
-      clutter_actor_set_height (actor, g_value_get_float (value));
-      break;
-
-    case PROP_DEPTH:
-      clutter_actor_set_depth (actor, g_value_get_float (value));
-      break;
-
-    case PROP_OPACITY:
-      clutter_actor_set_opacity (actor, g_value_get_uint (value));
-      break;
-
     case PROP_OFFSCREEN_REDIRECT:
       clutter_actor_set_offscreen_redirect (actor, g_value_get_enum (value));
       break;
@@ -3655,26 +3587,6 @@ clutter_actor_set_property (GObject      *object,
 	clutter_actor_show (actor);
       else
 	clutter_actor_hide (actor);
-      break;
-
-    case PROP_SCALE_X:
-      clutter_actor_set_scale_factor (actor, CLUTTER_X_AXIS,
-                                      g_value_get_double (value));
-      break;
-
-    case PROP_SCALE_Y:
-      clutter_actor_set_scale_factor (actor, CLUTTER_Y_AXIS,
-                                      g_value_get_double (value));
-      break;
-
-    case PROP_SCALE_CENTER_X:
-      clutter_actor_set_scale_center (actor, CLUTTER_X_AXIS,
-                                      g_value_get_float (value));
-      break;
-
-    case PROP_SCALE_CENTER_Y:
-      clutter_actor_set_scale_center (actor, CLUTTER_Y_AXIS,
-                                      g_value_get_float (value));
       break;
 
     case PROP_SCALE_GRAVITY:
@@ -3693,42 +3605,6 @@ clutter_actor_set_property (GObject      *object,
 
     case PROP_REACTIVE:
       clutter_actor_set_reactive (actor, g_value_get_boolean (value));
-      break;
-
-    case PROP_ROTATION_ANGLE_X:
-      clutter_actor_set_rotation_angle (actor,
-                                        CLUTTER_X_AXIS,
-                                        g_value_get_double (value));
-      break;
-
-    case PROP_ROTATION_ANGLE_Y:
-      clutter_actor_set_rotation_angle (actor,
-                                        CLUTTER_Y_AXIS,
-                                        g_value_get_double (value));
-      break;
-
-    case PROP_ROTATION_ANGLE_Z:
-      clutter_actor_set_rotation_angle (actor,
-                                        CLUTTER_Z_AXIS,
-                                        g_value_get_double (value));
-      break;
-
-    case PROP_ROTATION_CENTER_X:
-      clutter_actor_set_rotation_center_internal (actor,
-                                                  CLUTTER_X_AXIS,
-                                                  g_value_get_boxed (value));
-      break;
-
-    case PROP_ROTATION_CENTER_Y:
-      clutter_actor_set_rotation_center_internal (actor,
-                                                  CLUTTER_Y_AXIS,
-                                                  g_value_get_boxed (value));
-      break;
-
-    case PROP_ROTATION_CENTER_Z:
-      clutter_actor_set_rotation_center_internal (actor,
-                                                  CLUTTER_Z_AXIS,
-                                                  g_value_get_boxed (value));
       break;
 
     case PROP_ROTATION_CENTER_Z_GRAVITY:
@@ -3768,10 +3644,6 @@ clutter_actor_set_property (GObject      *object,
       clutter_actor_add_effect (actor, g_value_get_object (value));
       break;
 
-    case PROP_BACKGROUND_COLOR:
-      clutter_actor_set_background_color (actor, g_value_get_boxed (value));
-      break;
-
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -3789,30 +3661,6 @@ clutter_actor_get_property (GObject    *object,
 
   switch (prop_id)
     {
-    case PROP_X:
-      g_value_set_float (value, clutter_actor_get_x (actor));
-      break;
-
-    case PROP_Y:
-      g_value_set_float (value, clutter_actor_get_y (actor));
-      break;
-
-    case PROP_WIDTH:
-      g_value_set_float (value, clutter_actor_get_width (actor));
-      break;
-
-    case PROP_HEIGHT:
-      g_value_set_float (value, clutter_actor_get_height (actor));
-      break;
-
-    case PROP_DEPTH:
-      g_value_set_float (value, clutter_actor_get_depth (actor));
-      break;
-
-    case PROP_OPACITY:
-      g_value_set_uint (value, priv->opacity);
-      break;
-
     case PROP_OFFSCREEN_REDIRECT:
       g_value_set_enum (value, priv->offscreen_redirect);
       break;
@@ -3850,116 +3698,12 @@ clutter_actor_get_property (GObject    *object,
       }
       break;
 
-    case PROP_SCALE_X:
-      {
-        const ClutterTransformInfo *info;
-
-        info = _clutter_actor_get_transform_info_or_defaults (actor);
-        g_value_set_double (value, info->scale_x);
-      }
-      break;
-
-    case PROP_SCALE_Y:
-      {
-        const ClutterTransformInfo *info;
-
-        info = _clutter_actor_get_transform_info_or_defaults (actor);
-        g_value_set_double (value, info->scale_y);
-      }
-      break;
-
-    case PROP_SCALE_CENTER_X:
-      {
-        gfloat center;
-
-        clutter_actor_get_scale_center (actor, &center, NULL);
-
-        g_value_set_float (value, center);
-      }
-      break;
-
-    case PROP_SCALE_CENTER_Y:
-      {
-        gfloat center;
-
-        clutter_actor_get_scale_center (actor, NULL, &center);
-
-        g_value_set_float (value, center);
-      }
-      break;
-
     case PROP_SCALE_GRAVITY:
       g_value_set_enum (value, clutter_actor_get_scale_gravity (actor));
       break;
 
     case PROP_REACTIVE:
       g_value_set_boolean (value, clutter_actor_get_reactive (actor));
-      break;
-
-    case PROP_ROTATION_ANGLE_X:
-      {
-        const ClutterTransformInfo *info;
-
-        info = _clutter_actor_get_transform_info_or_defaults (actor);
-        g_value_set_double (value, info->rx_angle);
-      }
-      break;
-
-    case PROP_ROTATION_ANGLE_Y:
-      {
-        const ClutterTransformInfo *info;
-
-        info = _clutter_actor_get_transform_info_or_defaults (actor);
-        g_value_set_double (value, info->ry_angle);
-      }
-      break;
-
-    case PROP_ROTATION_ANGLE_Z:
-      {
-        const ClutterTransformInfo *info;
-
-        info = _clutter_actor_get_transform_info_or_defaults (actor);
-        g_value_set_double (value, info->rz_angle);
-      }
-      break;
-
-    case PROP_ROTATION_CENTER_X:
-      {
-        ClutterVertex center;
-
-        clutter_actor_get_rotation (actor, CLUTTER_X_AXIS,
-                                    &center.x,
-                                    &center.y,
-                                    &center.z);
-
-        g_value_set_boxed (value, &center);
-      }
-      break;
-
-    case PROP_ROTATION_CENTER_Y:
-      {
-        ClutterVertex center;
-
-        clutter_actor_get_rotation (actor, CLUTTER_Y_AXIS,
-                                    &center.x,
-                                    &center.y,
-                                    &center.z);
-
-        g_value_set_boxed (value, &center);
-      }
-      break;
-
-    case PROP_ROTATION_CENTER_Z:
-      {
-        ClutterVertex center;
-
-        clutter_actor_get_rotation (actor, CLUTTER_Z_AXIS,
-                                    &center.x,
-                                    &center.y,
-                                    &center.z);
-
-        g_value_set_boxed (value, &center);
-      }
       break;
 
     case PROP_ROTATION_CENTER_Z_GRAVITY:
@@ -4012,10 +3756,6 @@ clutter_actor_get_property (GObject    *object,
 
     case PROP_BACKGROUND_COLOR_SET:
       g_value_set_boolean (value, priv->bg_color_set);
-      break;
-
-    case PROP_BACKGROUND_COLOR:
-      g_value_set_boxed (value, &priv->bg_color);
       break;
 
     case PROP_FIRST_CHILD:
@@ -4336,6 +4076,7 @@ clutter_actor_constructor (GType gtype,
 static void
 clutter_actor_class_init (ClutterActorClass *klass)
 {
+  gint i;
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
   quark_shader_data = g_quark_from_static_string ("-clutter-actor-shader-data");
@@ -4374,7 +4115,7 @@ clutter_actor_class_init (ClutterActorClass *klass)
    *
    * The #ClutterActor:x property is animatable.
    */
-  obj_props[PROP_X] =
+  obj_anim_props[PROP_X] =
     g_param_spec_float ("x",
                         P_("X coordinate"),
                         P_("X coordinate of the actor"),
@@ -4393,7 +4134,7 @@ clutter_actor_class_init (ClutterActorClass *klass)
    *
    * The #ClutterActor:y property is animatable.
    */
-  obj_props[PROP_Y] =
+  obj_anim_props[PROP_Y] =
     g_param_spec_float ("y",
                         P_("Y coordinate"),
                         P_("Y coordinate of the actor"),
@@ -4412,7 +4153,7 @@ clutter_actor_class_init (ClutterActorClass *klass)
    *
    * The #ClutterActor:width property is animatable.
    */
-  obj_props[PROP_WIDTH] =
+  obj_anim_props[PROP_WIDTH] =
     g_param_spec_float ("width",
                         P_("Width"),
                         P_("Width of the actor"),
@@ -4431,7 +4172,7 @@ clutter_actor_class_init (ClutterActorClass *klass)
    *
    * The #ClutterActor:height property is animatable.
    */
-  obj_props[PROP_HEIGHT] =
+  obj_anim_props[PROP_HEIGHT] =
     g_param_spec_float ("height",
                         P_("Height"),
                         P_("Height of the actor"),
@@ -4453,7 +4194,7 @@ clutter_actor_class_init (ClutterActorClass *klass)
    *
    * Since: 0.6
    */
-  obj_props[PROP_DEPTH] =
+  obj_anim_props[PROP_DEPTH] =
     g_param_spec_float ("depth",
                         P_("Depth"),
                         P_("Position on the Z axis"),
@@ -4471,7 +4212,7 @@ clutter_actor_class_init (ClutterActorClass *klass)
    *
    * The #ClutterActor:opacity property is animatable.
    */
-  obj_props[PROP_OPACITY] =
+  obj_anim_props[PROP_OPACITY] =
     g_param_spec_uint ("opacity",
                        P_("Opacity"),
                        P_("Opacity of an actor"),
@@ -4480,6 +4221,120 @@ clutter_actor_class_init (ClutterActorClass *klass)
                        G_PARAM_READWRITE |
                        G_PARAM_STATIC_STRINGS |
                        CLUTTER_PARAM_ANIMATABLE);
+
+  /**
+   * ClutterActor:scale-x:
+   *
+   * The horizontal scale of the actor.
+   *
+   * The #ClutterActor:scale-x property is animatable.
+   *
+   * Since: 0.6
+   */
+  obj_anim_props[PROP_SCALE_X] =
+    g_param_spec_double ("scale-x",
+                         P_("Scale X"),
+                         P_("Scale factor on the X axis"),
+                         0.0, G_MAXDOUBLE,
+                         1.0,
+                         G_PARAM_READWRITE |
+                         G_PARAM_STATIC_STRINGS |
+                         CLUTTER_PARAM_ANIMATABLE);
+
+  /**
+   * ClutterActor:scale-y:
+   *
+   * The vertical scale of the actor.
+   *
+   * The #ClutterActor:scale-y property is animatable.
+   *
+   * Since: 0.6
+   */
+  obj_anim_props[PROP_SCALE_Y] =
+    g_param_spec_double ("scale-y",
+                         P_("Scale Y"),
+                         P_("Scale factor on the Y axis"),
+                         0.0, G_MAXDOUBLE,
+                         1.0,
+                         G_PARAM_READWRITE |
+                         G_PARAM_STATIC_STRINGS |
+                         CLUTTER_PARAM_ANIMATABLE);
+
+  /**
+   * ClutterActor:rotation-angle-x:
+   *
+   * The rotation angle on the X axis.
+   *
+   * The #ClutterActor:rotation-angle-x property is animatable.
+   *
+   * Since: 0.6
+   */
+  obj_anim_props[PROP_ROTATION_ANGLE_X] =
+    g_param_spec_double ("rotation-angle-x",
+                         P_("Rotation Angle X"),
+                         P_("The rotation angle on the X axis"),
+                         -G_MAXDOUBLE, G_MAXDOUBLE,
+                         0.0,
+                         G_PARAM_READWRITE |
+                         G_PARAM_STATIC_STRINGS |
+                         CLUTTER_PARAM_ANIMATABLE);
+
+  /**
+   * ClutterActor:rotation-angle-y:
+   *
+   * The rotation angle on the Y axis
+   *
+   * The #ClutterActor:rotation-angle-y property is animatable.
+   *
+   * Since: 0.6
+   */
+  obj_anim_props[PROP_ROTATION_ANGLE_Y] =
+    g_param_spec_double ("rotation-angle-y",
+                         P_("Rotation Angle Y"),
+                         P_("The rotation angle on the Y axis"),
+                         -G_MAXDOUBLE, G_MAXDOUBLE,
+                         0.0,
+                         G_PARAM_READWRITE |
+                         G_PARAM_STATIC_STRINGS |
+                         CLUTTER_PARAM_ANIMATABLE);
+
+  /**
+   * ClutterActor:rotation-angle-z:
+   *
+   * The rotation angle on the Z axis
+   *
+   * The #ClutterActor:rotation-angle-z property is animatable.
+   *
+   * Since: 0.6
+   */
+  obj_anim_props[PROP_ROTATION_ANGLE_Z] =
+    g_param_spec_double ("rotation-angle-z",
+                         P_("Rotation Angle Z"),
+                         P_("The rotation angle on the Z axis"),
+                         -G_MAXDOUBLE, G_MAXDOUBLE,
+                         0.0,
+                         G_PARAM_READWRITE |
+                         G_PARAM_STATIC_STRINGS |
+                         CLUTTER_PARAM_ANIMATABLE);
+
+  /**
+   * ClutterActor:background-color:
+   *
+   * Paints a solid fill of the actor's allocation using the specified
+   * color.
+   *
+   * The #ClutterActor:background-color property is animatable.
+   *
+   * Since: 1.10
+   */
+  obj_anim_props[PROP_BACKGROUND_COLOR] =
+    clutter_param_spec_color ("background-color",
+                              P_("Background color"),
+                              P_("The actor's background color"),
+                              CLUTTER_COLOR_Transparent,
+                              G_PARAM_READWRITE |
+                              G_PARAM_STATIC_STRINGS |
+                              CLUTTER_PARAM_ANIMATABLE);
 
   /**
    * ClutterActor:offscreen-redirect:
@@ -4601,74 +4456,6 @@ clutter_actor_class_init (ClutterActorClass *klass)
                          CLUTTER_PARAM_READWRITE);
 
   /**
-   * ClutterActor:scale-x:
-   *
-   * The horizontal scale of the actor.
-   *
-   * The #ClutterActor:scale-x property is animatable.
-   *
-   * Since: 0.6
-   */
-  obj_props[PROP_SCALE_X] =
-    g_param_spec_double ("scale-x",
-                         P_("Scale X"),
-                         P_("Scale factor on the X axis"),
-                         0.0, G_MAXDOUBLE,
-                         1.0,
-                         G_PARAM_READWRITE |
-                         G_PARAM_STATIC_STRINGS |
-                         CLUTTER_PARAM_ANIMATABLE);
-
-  /**
-   * ClutterActor:scale-y:
-   *
-   * The vertical scale of the actor.
-   *
-   * The #ClutterActor:scale-y property is animatable.
-   *
-   * Since: 0.6
-   */
-  obj_props[PROP_SCALE_Y] =
-    g_param_spec_double ("scale-y",
-                         P_("Scale Y"),
-                         P_("Scale factor on the Y axis"),
-                         0.0, G_MAXDOUBLE,
-                         1.0,
-                         G_PARAM_READWRITE |
-                         G_PARAM_STATIC_STRINGS |
-                         CLUTTER_PARAM_ANIMATABLE);
-
-  /**
-   * ClutterActor:scale-center-x:
-   *
-   * The horizontal center point for scaling
-   *
-   * Since: 1.0
-   */
-  obj_props[PROP_SCALE_CENTER_X] =
-    g_param_spec_float ("scale-center-x",
-                        P_("Scale Center X"),
-                        P_("Horizontal scale center"),
-                        -G_MAXFLOAT, G_MAXFLOAT,
-                        0.0,
-                        CLUTTER_PARAM_READWRITE);
-
-  /**
-   * ClutterActor:scale-center-y:
-   *
-   * The vertical center point for scaling
-   *
-   * Since: 1.0
-   */
-  obj_props[PROP_SCALE_CENTER_Y] =
-    g_param_spec_float ("scale-center-y",
-                        P_("Scale Center Y"),
-                        P_("Vertical scale center"),
-                        -G_MAXFLOAT, G_MAXFLOAT,
-                        0.0,
-                        CLUTTER_PARAM_READWRITE);
-
-  /**
    * ClutterActor:scale-gravity:
    *
    * The center point for scaling expressed as a #ClutterGravity
@@ -4682,63 +4469,6 @@ clutter_actor_class_init (ClutterActorClass *klass)
                        CLUTTER_TYPE_GRAVITY,
                        CLUTTER_GRAVITY_NONE,
                        CLUTTER_PARAM_READWRITE);
-
-  /**
-   * ClutterActor:rotation-angle-x:
-   *
-   * The rotation angle on the X axis.
-   *
-   * The #ClutterActor:rotation-angle-x property is animatable.
-   *
-   * Since: 0.6
-   */
-  obj_props[PROP_ROTATION_ANGLE_X] =
-    g_param_spec_double ("rotation-angle-x",
-                         P_("Rotation Angle X"),
-                         P_("The rotation angle on the X axis"),
-                         -G_MAXDOUBLE, G_MAXDOUBLE,
-                         0.0,
-                         G_PARAM_READWRITE |
-                         G_PARAM_STATIC_STRINGS |
-                         CLUTTER_PARAM_ANIMATABLE);
-
-  /**
-   * ClutterActor:rotation-angle-y:
-   *
-   * The rotation angle on the Y axis
-   *
-   * The #ClutterActor:rotation-angle-y property is animatable.
-   *
-   * Since: 0.6
-   */
-  obj_props[PROP_ROTATION_ANGLE_Y] =
-    g_param_spec_double ("rotation-angle-y",
-                         P_("Rotation Angle Y"),
-                         P_("The rotation angle on the Y axis"),
-                         -G_MAXDOUBLE, G_MAXDOUBLE,
-                         0.0,
-                         G_PARAM_READWRITE |
-                         G_PARAM_STATIC_STRINGS |
-                         CLUTTER_PARAM_ANIMATABLE);
-
-  /**
-   * ClutterActor:rotation-angle-z:
-   *
-   * The rotation angle on the Z axis
-   *
-   * The #ClutterActor:rotation-angle-z property is animatable.
-   *
-   * Since: 0.6
-   */
-  obj_props[PROP_ROTATION_ANGLE_Z] =
-    g_param_spec_double ("rotation-angle-z",
-                         P_("Rotation Angle Z"),
-                         P_("The rotation angle on the Z axis"),
-                         -G_MAXDOUBLE, G_MAXDOUBLE,
-                         0.0,
-                         G_PARAM_READWRITE |
-                         G_PARAM_STATIC_STRINGS |
-                         CLUTTER_PARAM_ANIMATABLE);
 
   /**
    * ClutterActor:rotation-center-x:
@@ -4796,6 +4526,36 @@ clutter_actor_class_init (ClutterActorClass *klass)
                        CLUTTER_TYPE_GRAVITY,
                        CLUTTER_GRAVITY_NONE,
                        CLUTTER_PARAM_READWRITE);
+
+  /**
+   * ClutterActor:scale-center-x:
+   *
+   * The horizontal center point for scaling
+   *
+   * Since: 1.0
+   */
+  obj_props[PROP_SCALE_CENTER_X] =
+    g_param_spec_float ("scale-center-x",
+                        P_("Scale Center X"),
+                        P_("Horizontal scale center"),
+                        -G_MAXFLOAT, G_MAXFLOAT,
+                        0.0,
+                        CLUTTER_PARAM_READWRITE);
+
+  /**
+   * ClutterActor:scale-center-y:
+   *
+   * The vertical center point for scaling
+   *
+   * Since: 1.0
+   */
+  obj_props[PROP_SCALE_CENTER_Y] =
+    g_param_spec_float ("scale-center-y",
+                        P_("Scale Center Y"),
+                        P_("Vertical scale center"),
+                        -G_MAXFLOAT, G_MAXFLOAT,
+                        0.0,
+                        CLUTTER_PARAM_READWRITE);
 
   /**
    * ClutterActor:anchor-x:
@@ -4920,25 +4680,6 @@ clutter_actor_class_init (ClutterActorClass *klass)
                           CLUTTER_PARAM_READABLE);
 
   /**
-   * ClutterActor:background-color:
-   *
-   * Paints a solid fill of the actor's allocation using the specified
-   * color.
-   *
-   * The #ClutterActor:background-color property is animatable.
-   *
-   * Since: 1.10
-   */
-  obj_props[PROP_BACKGROUND_COLOR] =
-    clutter_param_spec_color ("background-color",
-                              P_("Background color"),
-                              P_("The actor's background color"),
-                              CLUTTER_COLOR_Transparent,
-                              G_PARAM_READWRITE |
-                              G_PARAM_STATIC_STRINGS |
-                              CLUTTER_PARAM_ANIMATABLE);
-
-  /**
    * ClutterActor:first-child:
    *
    * The actor's first child.
@@ -4965,6 +4706,10 @@ clutter_actor_class_init (ClutterActorClass *klass)
                          P_("The actor's last child"),
                          CLUTTER_TYPE_ACTOR,
                          CLUTTER_PARAM_READABLE);
+
+  for (i = 1; i < PROP_ANIMATABLE_LAST; i++)
+    if (obj_anim_props[i] != NULL)
+      obj_anim_props[i]->param_id = i;
 
   g_object_class_install_properties (object_class, PROP_LAST, obj_props);
 
@@ -6239,7 +5984,7 @@ clutter_actor_set_width (ClutterActor *self,
 {
   g_return_if_fail (CLUTTER_IS_ACTOR (self));
 
-  if (_clutter_actor_get_transition (self, obj_props[PROP_WIDTH]) == NULL)
+  if (_clutter_actor_get_transition (self, obj_anim_props[PROP_WIDTH]) == NULL)
     {
       float cur_size;
 
@@ -6250,11 +5995,7 @@ clutter_actor_set_width (ClutterActor *self,
        */
       if (clutter_actor_get_easing_duration (self) == 0)
         {
-          g_object_freeze_notify (G_OBJECT (self));
-
           clutter_actor_set_width_internal (self, width);
-
-          g_object_thaw_notify (G_OBJECT (self));
 
           return;
         }
@@ -6262,12 +6003,12 @@ clutter_actor_set_width (ClutterActor *self,
         cur_size = clutter_actor_get_width (self);
 
       _clutter_actor_create_transition (self,
-                                        obj_props[PROP_WIDTH],
+                                        obj_anim_props[PROP_WIDTH],
                                         cur_size,
                                         width);
     }
   else
-    _clutter_actor_update_transition (self, obj_props[PROP_WIDTH], width);
+    _clutter_actor_update_transition (self, obj_anim_props[PROP_WIDTH], width);
 }
 
 /**
@@ -6291,18 +6032,14 @@ clutter_actor_set_height (ClutterActor *self,
 {
   g_return_if_fail (CLUTTER_IS_ACTOR (self));
 
-  if (_clutter_actor_get_transition (self, obj_props[PROP_HEIGHT]) == NULL)
+  if (_clutter_actor_get_transition (self, obj_anim_props[PROP_HEIGHT]) == NULL)
     {
       float cur_size;
 
       /* see the comment in clutter_actor_set_width() above */
       if (clutter_actor_get_easing_duration (self) == 0)
         {
-          g_object_freeze_notify (G_OBJECT (self));
-
           clutter_actor_set_height_internal (self, height);
-
-          g_object_thaw_notify (G_OBJECT (self));
 
           return;
         }
@@ -6310,12 +6047,12 @@ clutter_actor_set_height (ClutterActor *self,
         cur_size = clutter_actor_get_height (self);
 
       _clutter_actor_create_transition (self,
-                                        obj_props[PROP_HEIGHT],
+                                        obj_anim_props[PROP_HEIGHT],
                                         cur_size,
                                         height);
     }
   else
-    _clutter_actor_update_transition (self, obj_props[PROP_HEIGHT], height);
+    _clutter_actor_update_transition (self, obj_anim_props[PROP_HEIGHT], height);
 }
 
 static inline void
@@ -6333,8 +6070,6 @@ clutter_actor_set_x_internal (ClutterActor *self,
   clutter_actor_store_old_geometry (self, &old);
 
   info->fixed_x = x;
-
-  clutter_actor_notify_if_geometry_changed (self, &old);
 
   clutter_actor_queue_redraw (self);
 }
@@ -6354,8 +6089,6 @@ clutter_actor_set_y_internal (ClutterActor *self,
   clutter_actor_store_old_geometry (self, &old);
 
   info->fixed_y = y;
-
-  clutter_actor_notify_if_geometry_changed (self, &old);
 
   clutter_actor_queue_redraw (self);
 }
@@ -6380,16 +6113,16 @@ clutter_actor_set_x (ClutterActor *self,
 {
   g_return_if_fail (CLUTTER_IS_ACTOR (self));
 
-  if (_clutter_actor_get_transition (self, obj_props[PROP_X]) == NULL)
+  if (_clutter_actor_get_transition (self, obj_anim_props[PROP_X]) == NULL)
     {
       float cur_position = clutter_actor_get_x (self);
 
-      _clutter_actor_create_transition (self, obj_props[PROP_X],
+      _clutter_actor_create_transition (self, obj_anim_props[PROP_X],
                                         cur_position,
                                         x);
     }
   else
-    _clutter_actor_update_transition (self, obj_props[PROP_X], x);
+    _clutter_actor_update_transition (self, obj_anim_props[PROP_X], x);
 }
 
 /**
@@ -6412,16 +6145,16 @@ clutter_actor_set_y (ClutterActor *self,
 {
   g_return_if_fail (CLUTTER_IS_ACTOR (self));
 
-  if (_clutter_actor_get_transition (self, obj_props[PROP_Y]) == NULL)
+  if (_clutter_actor_get_transition (self, obj_anim_props[PROP_Y]) == NULL)
     {
       float cur_position = clutter_actor_get_y (self);
 
-      _clutter_actor_create_transition (self, obj_props[PROP_Y],
+      _clutter_actor_create_transition (self, obj_anim_props[PROP_Y],
                                         cur_position,
                                         y);
     }
   else
-    _clutter_actor_update_transition (self, obj_props[PROP_Y], y);
+    _clutter_actor_update_transition (self, obj_anim_props[PROP_Y], y);
 }
 
 /**
@@ -6701,7 +6434,7 @@ clutter_actor_set_opacity_internal (ClutterActor *self,
                                         NULL, /* clip */
                                         priv->flatten_effect);
 
-      g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_OPACITY]);
+      g_object_notify_by_pspec (G_OBJECT (self), obj_anim_props[PROP_OPACITY]);
     }
 }
 
@@ -6721,14 +6454,14 @@ clutter_actor_set_opacity (ClutterActor *self,
 {
   g_return_if_fail (CLUTTER_IS_ACTOR (self));
 
-  if (_clutter_actor_get_transition (self, obj_props[PROP_OPACITY]) == NULL)
+  if (_clutter_actor_get_transition (self, obj_anim_props[PROP_OPACITY]) == NULL)
     {
-      _clutter_actor_create_transition (self, obj_props[PROP_OPACITY],
+      _clutter_actor_create_transition (self, obj_anim_props[PROP_OPACITY],
                                         self->priv->opacity,
                                         opacity);
     }
   else
-    _clutter_actor_update_transition (self, obj_props[PROP_OPACITY], opacity);
+    _clutter_actor_update_transition (self, obj_anim_props[PROP_OPACITY], opacity);
 }
 
 /*
@@ -6988,8 +6721,6 @@ clutter_actor_set_depth_internal (ClutterActor *self,
       /* TODO_LIONEL: fix this... */
 
       clutter_actor_queue_redraw (self);
-
-      g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_DEPTH]);
     }
 }
 
@@ -7009,18 +6740,18 @@ clutter_actor_set_depth (ClutterActor *self,
 {
   g_return_if_fail (CLUTTER_IS_ACTOR (self));
 
-  if (_clutter_actor_get_transition (self, obj_props[PROP_DEPTH]) == NULL)
+  if (_clutter_actor_get_transition (self, obj_anim_props[PROP_DEPTH]) == NULL)
     {
       const ClutterTransformInfo *info;
 
       info = _clutter_actor_get_transform_info_or_defaults (self);
 
-      _clutter_actor_create_transition (self, obj_props[PROP_DEPTH],
+      _clutter_actor_create_transition (self, obj_anim_props[PROP_DEPTH],
                                         info->depth,
                                         depth);
     }
   else
-    _clutter_actor_update_transition (self, obj_props[PROP_DEPTH], depth);
+    _clutter_actor_update_transition (self, obj_anim_props[PROP_DEPTH], depth);
 
   clutter_actor_queue_redraw (self);
 }
@@ -9262,10 +8993,6 @@ clutter_actor_set_animatable_property (ClutterActor *actor,
       clutter_actor_set_opacity_internal (actor, g_value_get_uint (value));
       break;
 
-    case PROP_BACKGROUND_COLOR:
-      clutter_actor_set_background_color_internal (actor, clutter_value_get_color (value));
-      break;
-
     case PROP_SCALE_X:
       clutter_actor_set_scale_factor_internal (actor,
                                                g_value_get_double (value),
@@ -11277,7 +11004,6 @@ clutter_actor_set_background_color_internal (ClutterActor *self,
   clutter_actor_queue_redraw (self);
 
   g_object_notify_by_pspec (obj, obj_props[PROP_BACKGROUND_COLOR_SET]);
-  g_object_notify_by_pspec (obj, obj_props[PROP_BACKGROUND_COLOR]);
 }
 
 /**
@@ -11320,7 +11046,7 @@ clutter_actor_set_background_color (ClutterActor       *self,
       return;
     }
 
-  bg_color_pspec = obj_props[PROP_BACKGROUND_COLOR];
+  bg_color_pspec = obj_anim_props[PROP_BACKGROUND_COLOR];
   if (_clutter_actor_get_transition (self, bg_color_pspec) == NULL)
     {
       _clutter_actor_create_transition (self, bg_color_pspec,
