@@ -114,6 +114,8 @@ struct _ClutterStagePrivate
   /* the stage implementation */
   ClutterStageWindow *impl;
 
+  ClutterGeometry prev_geom;
+
   ClutterPerspective perspective;
   CoglMatrix projection;
   CoglMatrix inverse_projection;
@@ -248,15 +250,12 @@ static void
 _clutter_stage_sync_sizes (ClutterStage *self)
 {
   ClutterStagePrivate *priv = self->priv;
-  ClutterGeometry prev_geom, geom;
+  ClutterGeometry geom;
   cairo_rectangle_int_t window_size;
   gfloat width, height;
 
   if (priv->impl == NULL)
     return;
-
-  /* our old allocation */
-  clutter_actor_get_allocation_geometry (CLUTTER_ACTOR (self), &prev_geom);
 
   /* the current allocation */
   clutter_actor_get_size (CLUTTER_ACTOR (self), &width, &height);
@@ -294,13 +293,15 @@ _clutter_stage_sync_sizes (ClutterStage *self)
 
   /* reset the viewport if the allocation effectively changed */
   clutter_actor_get_allocation_geometry (CLUTTER_ACTOR (self), &geom);
-  if (geom.width != prev_geom.width ||
-      geom.height != prev_geom.height)
+  if (geom.width != priv->prev_geom.width ||
+      geom.height != priv->prev_geom.height)
     {
       _clutter_stage_set_viewport (CLUTTER_STAGE (self),
                                    0, 0,
                                    geom.width,
                                    geom.height);
+
+      priv->prev_geom = geom;
 
       /* Note: we don't assume that set_viewport will queue a full redraw
        * since it may bail-out early if something preemptively set the
