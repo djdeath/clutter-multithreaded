@@ -791,7 +791,6 @@ static inline void clutter_actor_set_background_color_internal (ClutterActor *se
   cogl_matrix_translate ((m), -_tx, -_ty, -_tz);        } G_STMT_END
 
 static GQuark quark_shader_data = 0;
-static GQuark quark_actor_layout_info = 0;
 static GQuark quark_actor_transform_info = 0;
 static GQuark quark_actor_animation_info = 0;
 
@@ -4080,7 +4079,6 @@ clutter_actor_class_init (ClutterActorClass *klass)
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
   quark_shader_data = g_quark_from_static_string ("-clutter-actor-shader-data");
-  quark_actor_layout_info = g_quark_from_static_string ("-clutter-actor-layout-info");
   quark_actor_transform_info = g_quark_from_static_string ("-clutter-actor-transform-info");
   quark_actor_animation_info = g_quark_from_static_string ("-clutter-actor-animation-info");
 
