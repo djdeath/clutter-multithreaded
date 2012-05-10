@@ -62,6 +62,7 @@
 #include "clutter-container.h"
 #include "clutter-debug.h"
 #include "clutter-device-manager-private.h"
+#include "clutter-entity-private.h"
 #include "clutter-enum-types.h"
 #include "clutter-event-private.h"
 #include "clutter-id-pool.h"
@@ -170,6 +171,10 @@ struct _ClutterStagePrivate
   guint accept_focus           : 1;
   guint motion_events_enabled  : 1;
   guint has_custom_perspective : 1;
+
+
+  /* TODO_LIONE: to be wrapped for batch send to rendering thread. */
+  GList *entities;
 };
 
 enum
@@ -191,6 +196,7 @@ enum
 
 enum
 {
+  PAINT,
   FULLSCREEN,
   UNFULLSCREEN,
   ACTIVATE,
@@ -501,11 +507,18 @@ clutter_stage_paint (ClutterActor *self)
   ClutterActorIter iter;
   ClutterActor *child;
   guint8 real_alpha;
+  GList *entity;
 
   CLUTTER_STATIC_TIMER (stage_clear_timer,
                         "Painting actors", /* parent */
                         "Stage clear",
                         "The time spent clearing the stage",
+                        0 /* no application private data */);
+
+  CLUTTER_STATIC_TIMER (stage_entity_timer,
+                        "Painting actors", /* parent */
+                        "Painting entities",
+                        "The time spent painting the entities",
                         0 /* no application private data */);
 
   CLUTTER_NOTE (PAINT, "Initializing stage paint");
@@ -535,9 +548,20 @@ clutter_stage_paint (ClutterActor *self)
   cogl_clear (&stage_color, clear_flags);
   CLUTTER_TIMER_STOP (_clutter_uprof_context, stage_clear_timer);
 
+  g_signal_emit (self, stage_signals[PAINT], 0);
+
   clutter_actor_iter_init (&iter, self);
   while (clutter_actor_iter_next (&iter, &child))
     clutter_actor_paint (child);
+
+  CLUTTER_TIMER_START (_clutter_uprof_context, stage_entity_timer);
+  entity = priv->entities;
+  while (entity != NULL)
+    {
+      clutter_entity_draw ((ClutterEntity *) entity->data);
+      entity = entity->next;
+    }
+  CLUTTER_TIMER_STOP (_clutter_uprof_context, stage_entity_timer);
 }
 
 static void
@@ -1706,6 +1730,26 @@ clutter_stage_class_init (ClutterStageClass *klass)
                                 CLUTTER_PARAM_READWRITE);
   g_object_class_install_property (gobject_class, PROP_ACCEPT_FOCUS, pspec);
 
+   /**
+   * ClutterActor::paint:
+   * @stage: the #ClutterStage that received the signal
+   *
+   * The ::paint signal is emitted each time a stage is being painted.
+   *
+   * It is possible to connect a handler to the ::paint signal in order
+   * to set up some custom aspect of a paint.
+   *
+   * Since: 0.8
+   */
+  stage_signals[PAINT] =
+    g_signal_new (I_("paint"),
+                  G_TYPE_FROM_CLASS (gobject_class),
+                  G_SIGNAL_RUN_LAST |
+                  G_SIGNAL_NO_HOOKS,
+                  0,
+                  NULL, NULL,
+                  _clutter_marshal_VOID__VOID,
+                  G_TYPE_NONE, 0);
   /**
    * ClutterStage::fullscreen
    * @stage: the stage which was fullscreened
@@ -3380,6 +3424,8 @@ _clutter_stage_maybe_finish_queue_redraws (ClutterStage *stage)
         }
       g_list_free (stolen_list);
     }
+
+  /* TODO_LIONEL: */
 }
 
 /**
@@ -3705,4 +3751,17 @@ _clutter_stage_update_state (ClutterStage      *stage,
   _clutter_event_push (event, FALSE);
 
   return TRUE;
+}
+
+void
+clutter_stage_append_entity (ClutterStage *stage, ClutterEntity *entity)
+{
+  ClutterStagePrivate *priv;
+
+  g_return_if_fail (CLUTTER_IS_STAGE (stage));
+  g_return_if_fail (CLUTTER_IS_ENTITY (entity));
+
+  priv = stage->priv;
+
+  priv->entities = g_list_append (priv->entities, g_object_ref_sink (entity));
 }

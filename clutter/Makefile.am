@@ -63,6 +63,8 @@ source_h =					\
 	$(srcdir)/clutter-color-static.h	\
 	$(srcdir)/clutter-color.h		\
 	$(srcdir)/clutter-colorize-effect.h	\
+	$(srcdir)/clutter-component.h		\
+	$(srcdir)/clutter-rectangle-component.h	\
 	$(srcdir)/clutter-container.h		\
 	$(srcdir)/clutter-content.h		\
 	$(srcdir)/clutter-deform-effect.h	\
@@ -70,6 +72,7 @@ source_h =					\
 	$(srcdir)/clutter-device-manager.h	\
 	$(srcdir)/clutter-effect.h		\
 	$(srcdir)/clutter-enums.h		\
+	$(srcdir)/clutter-entity.h		\
 	$(srcdir)/clutter-event.h 		\
 	$(srcdir)/clutter-feature.h 		\
 	$(srcdir)/clutter-input-device.h	\
@@ -87,6 +90,7 @@ source_h =					\
 	$(srcdir)/clutter-paint-nodes.h		\
 	$(srcdir)/clutter-paint-node.h		\
 	$(srcdir)/clutter-path.h		\
+	$(srcdir)/clutter-property.h		\
 	$(srcdir)/clutter-property-transition.h	\
 	$(srcdir)/clutter-script.h		\
 	$(srcdir)/clutter-scriptable.h		\
@@ -123,12 +127,15 @@ source_c = \
 	$(srcdir)/clutter-clone.c		\
 	$(srcdir)/clutter-color.c 		\
 	$(srcdir)/clutter-colorize-effect.c	\
+	$(srcdir)/clutter-component.c		\
+	$(srcdir)/clutter-rectangle-component.c	\
 	$(srcdir)/clutter-container.c		\
 	$(srcdir)/clutter-content.c		\
 	$(srcdir)/clutter-deform-effect.c	\
 	$(srcdir)/clutter-desaturate-effect.c	\
 	$(srcdir)/clutter-device-manager.c	\
 	$(srcdir)/clutter-effect.c		\
+	$(srcdir)/clutter-entity.c		\
 	$(srcdir)/clutter-event.c 		\
 	$(srcdir)/clutter-feature.c 		\
 	$(srcdir)/clutter-flatten-effect.c	\
@@ -147,6 +154,7 @@ source_c = \
 	$(srcdir)/clutter-paint-nodes.c		\
 	$(srcdir)/clutter-paint-node.c		\
 	$(srcdir)/clutter-path.c		\
+	$(srcdir)/clutter-property.c		\
 	$(srcdir)/clutter-property-transition.c	\
 	$(srcdir)/clutter-script.c		\
 	$(srcdir)/clutter-script-parser.c	\
@@ -172,13 +180,16 @@ source_c = \
 source_h_priv = \
 	$(srcdir)/clutter-actor-meta-private.h		\
 	$(srcdir)/clutter-actor-private.h		\
+	$(srcdir)/clutter-animatable-private.h		\
 	$(srcdir)/clutter-backend-private.h		\
 	$(srcdir)/clutter-bezier.h			\
+	$(srcdir)/clutter-component-private.h		\
 	$(srcdir)/clutter-content-private.h		\
 	$(srcdir)/clutter-debug.h 			\
 	$(srcdir)/clutter-device-manager-private.h	\
 	$(srcdir)/clutter-easing.h			\
 	$(srcdir)/clutter-effect-private.h		\
+	$(srcdir)/clutter-entity-private.h		\
 	$(srcdir)/clutter-event-translator.h		\
 	$(srcdir)/clutter-event-private.h		\
 	$(srcdir)/clutter-flatten-effect.h		\
@@ -190,6 +201,8 @@ source_h_priv = \
 	$(srcdir)/clutter-paint-volume-private.h	\
 	$(srcdir)/clutter-private.h 			\
 	$(srcdir)/clutter-profile.h			\
+	$(srcdir)/clutter-property-private.h		\
+	$(srcdir)/clutter-properties-private.h		\
 	$(srcdir)/clutter-script-private.h		\
 	$(srcdir)/clutter-settings-private.h		\
 	$(srcdir)/clutter-stage-manager-private.h	\
@@ -203,6 +216,7 @@ source_c_priv = \
 	$(srcdir)/clutter-event-translator.c	\
 	$(srcdir)/clutter-id-pool.c 		\
 	$(srcdir)/clutter-profile.c		\
+	$(srcdir)/clutter-properties.c		\
 	$(NULL)
 
 # built sources
@@ -229,6 +243,41 @@ EXTRA_DIST += clutter-version.h.in clutter-version.h
 EXTRA_DIST += clutter-keysyms-update.pl
 
 pc_files += clutter-$(CLUTTER_API_VERSION).pc
+
+clutter-properties-private.h: clutter-properties.list
+	$(QUIET_GEN)echo "#ifndef __CLUTTER_PROPERTIES_H__" > $@; \
+	echo "#define __CLUTTER_PROPERTIES_H__" >> $@; \
+	echo "" >> $@; \
+	echo "#include <glib.h>" >> $@; \
+	echo "" >> $@; \
+	echo "enum" >> $@; \
+	echo "{" >> $@; \
+	for i in `cat $(srcdir)/clutter-properties.list`; do \
+		echo "  CLUTTER_PROP_$$i," >> $@; \
+	done; \
+	echo "  CLUTTER_PROP_LAST_PROPERTY" >> $@; \
+	echo "};" >> $@; \
+	echo "" >> $@; \
+	echo "extern const gchar *_clutter_property_names[];" >> $@; \
+	echo "" >> $@; \
+	echo "#endif /* __CLUTTER_PROPERTIES_H__ */" >> $@
+
+clutter-properties.c: clutter-properties.list
+	$(QUIET_GEN)echo "#include \"clutter-properties-private.h\"" > $@; \
+	echo "" >> $@; \
+	echo "const gchar *_clutter_property_names[] = {" >> $@; \
+	for i in `cat $(srcdir)/clutter-properties.list`; do \
+		echo "  \"$$i\"," >> $@; \
+	done; \
+	echo "  NULL" >> $@; \
+	echo "};" >> $@
+
+BUILT_SOURCES += \
+	clutter-properties.c \
+	clutter-properties-private.h
+DISTCLEANFILES += \
+	clutter-properties.c \
+	clutter-properties-private.h
 
 # in order to be compatible with Clutter < 1.10, when we shipped a single
 # shared library whose name was determined by the single backend it

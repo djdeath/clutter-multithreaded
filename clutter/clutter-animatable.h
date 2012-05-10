@@ -38,8 +38,6 @@ G_BEGIN_DECLS
 #define CLUTTER_IS_ANIMATABLE(obj)              (G_TYPE_CHECK_INSTANCE_TYPE ((obj), CLUTTER_TYPE_ANIMATABLE))
 #define CLUTTER_ANIMATABLE_GET_IFACE(obj)       (G_TYPE_INSTANCE_GET_INTERFACE ((obj), CLUTTER_TYPE_ANIMATABLE, ClutterAnimatableIface))
 
-typedef struct _ClutterAnimatableIface          ClutterAnimatableIface;
-
 /**
  * ClutterAnimatable:
  *
@@ -48,6 +46,42 @@ typedef struct _ClutterAnimatableIface          ClutterAnimatableIface;
  *
  * Since: 1.0
  */
+
+typedef struct _ClutterAnimatableIface          ClutterAnimatableIface;
+typedef struct _ClutterAnimatableSpec           ClutterAnimatableSpec;
+
+/**
+ * ClutterAnimParamSpec: (skip)
+ * @member_offset: offset of the member in the private structure of an
+ * actor
+ *
+ * A #GParamSpec subclass for defining animatable properties.
+ *
+ * Since: 1.12
+ */
+struct _ClutterAnimatableSpec
+{
+  /*< private >*/
+  GParamSpec    parent_instance;
+
+  /*< public >*/
+  guint         member_size;
+  guint         member_offset;
+};
+
+gpointer clutter_anim_param_spec_get_member_pointer (ClutterAnimatableSpec *pspec,
+                                                     ClutterActor *actor);
+
+
+
+typedef struct _ClutterAnimatableValue ClutterAnimatableValue;
+
+ClutterAnimatableValue *clutter_animatable_value_new_stored (GParamSpec *pspec);
+
+ClutterAnimatableValue *clutter_animatable_value_new_live (GParamSpec *pspec,
+                                                           ClutterActor *actor);
+
+void clutter_animatable_value_free (ClutterAnimatableValue *value);
 
 /**
  * ClutterAnimatableIface:
@@ -97,19 +131,24 @@ struct _ClutterAnimatableIface
 
 GType clutter_animatable_get_type (void) G_GNUC_CONST;
 
-GParamSpec *clutter_animatable_find_property     (ClutterAnimatable *animatable,
-                                                  const gchar       *property_name);
-void        clutter_animatable_get_initial_state (ClutterAnimatable *animatable,
-                                                  const gchar       *property_name,
-                                                  GValue            *value);
-void        clutter_animatable_set_final_state   (ClutterAnimatable *animatable,
-                                                  const gchar       *property_name,
-                                                  const GValue      *value);
-gboolean    clutter_animatable_interpolate_value (ClutterAnimatable *animatable,
-                                                  const gchar       *property_name,
-                                                  ClutterInterval   *interval,
-                                                  gdouble            progress,
-                                                  GValue            *value);
+void        clutter_animatable_install_property   (GType              owner_type,
+                                                   GParamSpec        *pspec);
+void        clutter_animatable_install_properties (GType              owner_type,
+                                                   guint              n_props,
+                                                   GParamSpec        *pspec[]);
+GParamSpec *clutter_animatable_find_property      (ClutterAnimatable *animatable,
+                                                   const gchar       *property_name);
+void        clutter_animatable_get_initial_state  (ClutterAnimatable *animatable,
+                                                   const gchar       *property_name,
+                                                   GValue            *value);
+void        clutter_animatable_set_final_state    (ClutterAnimatable *animatable,
+                                                   const gchar       *property_name,
+                                                   const GValue      *value);
+gboolean    clutter_animatable_interpolate_value  (ClutterAnimatable *animatable,
+                                                   const gchar       *property_name,
+                                                   ClutterInterval   *interval,
+                                                   gdouble            progress,
+                                                   GValue            *value);
 
 G_END_DECLS
 

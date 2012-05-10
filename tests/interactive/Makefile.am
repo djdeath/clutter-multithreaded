@@ -42,7 +42,8 @@ UNIT_TESTS = \
 	test-state-script.c \
 	test-devices.c \
 	test-actor.c \
-	test-transitions.c
+	test-transitions.c \
+	test-entity.c
 
 if X11_TESTS
 UNIT_TESTS += test-pixmap.c

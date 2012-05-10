@@ -6,7 +6,7 @@
 #include <glib.h>
 #include <gmodule.h>
 
-#define NHANDS  6
+#define NHANDS  2000
 
 typedef struct SuperOH
 {

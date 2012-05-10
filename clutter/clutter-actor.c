@@ -506,6 +506,11 @@
 #define CLUTTER_ACTOR_GET_PRIVATE(obj) \
 (G_TYPE_INSTANCE_GET_PRIVATE ((obj), CLUTTER_TYPE_ACTOR, ClutterActorPrivate))
 
+#define ACTOR_GET_READ_DATA(actor) \
+  ((const ClutterTransformInfo *) _clutter_actor_get_read_data (actor))
+#define ACTOR_GET_WRITE_DATA(actor) \
+  ((ClutterTransformInfo *) _clutter_actor_get_write_data (actor))
+
 /* Internal enum used to control mapped state update.  This is a hint
  * which indicates when to do something other than just enforce
  * invariants.
@@ -525,8 +530,7 @@ typedef enum {
 
 struct _ClutterActorPrivate
 {
-  gfloat width;
-  gfloat height;
+  ClutterTransformInfo *info;
 
   /* clip, in actor coordinates */
   cairo_rectangle_t clip;
@@ -606,8 +610,6 @@ struct _ClutterActorPrivate
   ClutterPaintVolume last_paint_volume;
 
   ClutterStageQueueRedrawEntry *queue_redraw_entry;
-
-  ClutterColor bg_color;
 
   /* bitfields */
 
@@ -1719,7 +1721,9 @@ static void
 clutter_actor_real_pick (ClutterActor       *self,
 			 const ClutterColor *color)
 {
-  ClutterActorPrivate *priv = self->priv;
+  const ClutterTransformInfo *info;
+
+  info = _clutter_actor_get_transform_info_or_defaults (self);
 
   /* the default implementation is just to paint a rectangle
    * with the same size of the actor using the passed color
@@ -1731,7 +1735,7 @@ clutter_actor_real_pick (ClutterActor       *self,
                                 color->blue,
                                 color->alpha);
 
-      cogl_rectangle (0, 0, priv->width, priv->height);
+      cogl_rectangle (0, 0, info->width, info->height);
     }
 
   /* XXX - this thoroughly sucks, but we need to maintain compatibility
@@ -1782,15 +1786,14 @@ static void
 clutter_actor_store_old_geometry (ClutterActor    *self,
                                   ClutterActorBox *box)
 {
-  ClutterActorPrivate *priv = self->priv;
   const ClutterTransformInfo *info;
 
   info = _clutter_actor_get_transform_info_or_defaults (self);
 
   box->x1 = info->fixed_x;
   box->y1 = info->fixed_y;
-  box->x2 = box->x1 + priv->width;
-  box->y1 = box->y1 + priv->height;
+  box->x2 = box->x1 + info->width;
+  box->y1 = box->y1 + info->height;
 }
 
 static void
@@ -2081,6 +2084,7 @@ clutter_actor_get_allocation_vertices (ClutterActor  *self,
   ClutterActorBox box;
   ClutterVertex vertices[4];
   CoglMatrix modelview;
+  const ClutterTransformInfo *info;
 
   g_return_if_fail (CLUTTER_IS_ACTOR (self));
   g_return_if_fail (ancestor == NULL || CLUTTER_IS_ACTOR (ancestor));
@@ -2093,19 +2097,19 @@ clutter_actor_get_allocation_vertices (ClutterActor  *self,
   if (ancestor == NULL)
     ancestor = self;
 
-  priv = self->priv;
+  info = _clutter_actor_get_transform_info_or_defaults (self);
 
   vertices[0].x = 0;
   vertices[0].y = 0;
   vertices[0].z = 0;
-  vertices[1].x = priv->width;
+  vertices[1].x = info->width;
   vertices[1].y = 0;
   vertices[1].z = 0;
   vertices[2].x = 0;
-  vertices[2].y = priv->height;
+  vertices[2].y = info->height;
   vertices[2].z = 0;
-  vertices[3].x = priv->width;
-  vertices[3].y = priv->height;
+  vertices[3].x = info->width;
+  vertices[3].y = info->height;
   vertices[3].z = 0;
 
   _clutter_actor_get_relative_transformation_matrix (self, ancestor,
@@ -2142,19 +2146,19 @@ void
 clutter_actor_get_abs_allocation_vertices (ClutterActor  *self,
                                            ClutterVertex  verts[])
 {
-  ClutterActorPrivate *priv;
   ClutterActorBox actor_space_allocation;
+  const ClutterTransformInfo *info;
 
   g_return_if_fail (CLUTTER_IS_ACTOR (self));
 
-  priv = self->priv;
+  info = _clutter_actor_get_transform_info_or_defaults (self);
 
   /* NB: _clutter_actor_transform_and_project_box expects a box in the actor's
    * own coordinate space... */
   actor_space_allocation.x1 = 0;
   actor_space_allocation.y1 = 0;
-  actor_space_allocation.x2 = priv->width;
-  actor_space_allocation.y2 = priv->height;
+  actor_space_allocation.x2 = info->width;
+  actor_space_allocation.y2 = info->height;
   _clutter_actor_transform_and_project_box (self,
                                            &actor_space_allocation,
                                            verts);
@@ -2665,7 +2669,7 @@ clutter_actor_real_paint (ClutterActor *actor)
                     _clutter_actor_get_debug_name (iter),
                     _clutter_actor_get_debug_name (actor),
                     info->fixed_x, info->fixed_y,
-                    priv->width, priv->height);
+                    info->width, info->height);
 
       clutter_actor_paint (iter);
     }
@@ -3167,6 +3171,8 @@ clutter_actor_remove_child_internal (ClutterActor                 *self,
 static const ClutterTransformInfo default_transform_info = {
   0.0, 0.0,             /* fixed-x fixed-y */
 
+  0.0, 0.0,             /* width, height */
+
   0.0, { 0, },          /* rotation-x */
   0.0, { 0, },          /* rotation-y */
   0.0, { 0, },          /* rotation-z */
@@ -3176,6 +3182,8 @@ static const ClutterTransformInfo default_transform_info = {
   { 0, },               /* anchor */
 
   0.0,                  /* depth */
+
+  { 0, },               /* color */
 };
 
 /*< private >
@@ -3194,21 +3202,22 @@ static const ClutterTransformInfo default_transform_info = {
 const ClutterTransformInfo *
 _clutter_actor_get_transform_info_or_defaults (ClutterActor *self)
 {
-  ClutterTransformInfo *info;
+  const ClutterTransformInfo *info;
 
-  info = g_object_get_qdata (G_OBJECT (self), quark_actor_transform_info);
+  info = ACTOR_GET_READ_DATA (self);
+  /* info = g_object_get_qdata (G_OBJECT (self), quark_actor_transform_info); */
   if (info != NULL)
     return info;
 
   return &default_transform_info;
 }
 
-static void
-clutter_transform_info_free (gpointer data)
-{
-  if (data != NULL)
-    g_slice_free (ClutterTransformInfo, data);
-}
+/* static void */
+/* clutter_transform_info_free (gpointer data) */
+/* { */
+/*   if (data != NULL) */
+/*     g_slice_free (ClutterTransformInfo, data); */
+/* } */
 
 /*< private >
  * _clutter_actor_get_transform_info:
@@ -3230,21 +3239,23 @@ clutter_transform_info_free (gpointer data)
 ClutterTransformInfo *
 _clutter_actor_get_transform_info (ClutterActor *self)
 {
+  ClutterActorPrivate *priv = self->priv;
   ClutterTransformInfo *info;
 
-  info = g_object_get_qdata (G_OBJECT (self), quark_actor_transform_info);
+  info = ACTOR_GET_WRITE_DATA (self);
+  /* info = g_object_get_qdata (G_OBJECT (self), quark_actor_transform_info); */
   if (info == NULL)
     {
-      info = g_slice_new (ClutterTransformInfo);
+      priv->info = g_slice_new (ClutterTransformInfo);
 
-      *info = default_transform_info;
+      *priv->info = default_transform_info;
 
-      g_object_set_qdata_full (G_OBJECT (self), quark_actor_transform_info,
-                               info,
-                               clutter_transform_info_free);
+      /* g_object_set_qdata_full (G_OBJECT (self), quark_actor_transform_info, */
+      /*                          info, */
+      /*                          clutter_transform_info_free); */
     }
 
-  return info;
+  return ACTOR_GET_WRITE_DATA (self);
 }
 
 /*< private >
@@ -3776,6 +3787,7 @@ clutter_actor_dispose (GObject *object)
 {
   ClutterActor *self = CLUTTER_ACTOR (object);
   ClutterActorPrivate *priv = self->priv;
+  ClutterActorClass *klass = CLUTTER_ACTOR_GET_CLASS (self);
 
   CLUTTER_NOTE (MISC, "Disposing of object (id=%d) of type '%s' (ref_count:%d)",
 		priv->id,
@@ -3815,6 +3827,12 @@ clutter_actor_dispose (GObject *object)
   g_clear_object (&priv->pango_context);
   g_clear_object (&priv->effects);
   g_clear_object (&priv->flatten_effect);
+
+  if (priv->info != NULL)
+    {
+      g_slice_free1 (klass->get_data_size (self), priv->info);
+      priv->info = NULL;
+    }
 
   G_OBJECT_CLASS (clutter_actor_parent_class)->dispose (object);
 }
@@ -3895,10 +3913,13 @@ clutter_actor_update_default_paint_volume (ClutterActor       *self,
   ClutterActorPrivate *priv = self->priv;
   gboolean res = FALSE;
   ClutterActor *child;
+  const ClutterTransformInfo *info;
+
+  info = _clutter_actor_get_transform_info_or_defaults (self);
 
   /* we start from the allocation */
-  clutter_paint_volume_set_width (volume, priv->width);
-  clutter_paint_volume_set_height (volume, priv->height);
+  clutter_paint_volume_set_width (volume, info->width);
+  clutter_paint_volume_set_height (volume, info->height);
 
   /* if the actor has a clip set then we have a pretty definite
    * size for the paint volume: the actor cannot possibly paint
@@ -4058,6 +4079,43 @@ clutter_actor_real_destroy (ClutterActor *actor)
   g_object_thaw_notify (G_OBJECT (actor));
 }
 
+static guint
+clutter_actor_real_get_data_size (ClutterActor *actor)
+{
+  return sizeof (ClutterTransformInfo);
+}
+
+static inline guint
+_clutter_actor_get_data_size (ClutterActor *actor)
+{
+  ClutterActorClass *klass = CLUTTER_ACTOR_GET_CLASS (actor);
+
+  return klass->get_data_size (actor);
+}
+
+gpointer
+_clutter_actor_get_read_data (ClutterActor *self)
+{
+  return self->priv->info;
+}
+
+gpointer
+_clutter_actor_get_write_data (ClutterActor *self)
+{
+  return self->priv->info;
+}
+
+static void
+clutter_actor_real_copy_data (ClutterActor *actor,
+                              gpointer      dst,
+                              gpointer      src)
+{
+  ClutterTransformInfo *tdst = (ClutterTransformInfo *) dst;
+  ClutterTransformInfo *tsrc = (ClutterTransformInfo *) src;
+
+  *tdst = *tsrc;
+}
+
 static GObject *
 clutter_actor_constructor (GType gtype,
                            guint n_props,
@@ -4075,7 +4133,6 @@ clutter_actor_constructor (GType gtype,
 static void
 clutter_actor_class_init (ClutterActorClass *klass)
 {
-  gint i;
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
   quark_shader_data = g_quark_from_static_string ("-clutter-actor-shader-data");
@@ -4087,6 +4144,9 @@ clutter_actor_class_init (ClutterActorClass *klass)
   object_class->get_property = clutter_actor_get_property;
   object_class->dispose = clutter_actor_dispose;
   object_class->finalize = clutter_actor_finalize;
+
+  klass->get_data_size = clutter_actor_real_get_data_size;
+  klass->copy_data = clutter_actor_real_copy_data;
 
   klass->show = clutter_actor_real_show;
   klass->hide = clutter_actor_real_hide;
@@ -4705,11 +4765,11 @@ clutter_actor_class_init (ClutterActorClass *klass)
                          CLUTTER_TYPE_ACTOR,
                          CLUTTER_PARAM_READABLE);
 
-  for (i = 1; i < PROP_ANIMATABLE_LAST; i++)
-    if (obj_anim_props[i] != NULL)
-      obj_anim_props[i]->param_id = i;
-
   g_object_class_install_properties (object_class, PROP_LAST, obj_props);
+  clutter_animatable_install_properties (CLUTTER_TYPE_ACTOR,
+                                         PROP_ANIMATABLE_LAST,
+                                         obj_anim_props);
+
 
   /**
    * ClutterActor::destroy:
@@ -5652,9 +5712,11 @@ static inline void
 clutter_actor_set_width_internal (ClutterActor *self,
                                   gfloat        width)
 {
-  ClutterActorPrivate *priv = self->priv;
+  ClutterTransformInfo *info;
 
-  priv->width = width;
+  info = _clutter_actor_get_transform_info (self);
+
+  info->width = width;
 }
 
 /* variant of set_height() without checks and without notification
@@ -5664,9 +5726,11 @@ static inline void
 clutter_actor_set_height_internal (ClutterActor *self,
                                    gfloat        height)
 {
-  ClutterActorPrivate *priv = self->priv;
+  ClutterTransformInfo *info;
 
-  priv->height = height;
+  info = _clutter_actor_get_transform_info (self);
+
+  info->height = height;
 }
 
 /**
@@ -5886,13 +5950,13 @@ clutter_actor_get_transformed_size (ClutterActor *self,
 gfloat
 clutter_actor_get_width (ClutterActor *self)
 {
-  ClutterActorPrivate *priv;
+  const ClutterTransformInfo *info;
 
   g_return_val_if_fail (CLUTTER_IS_ACTOR (self), 0);
 
-  priv = self->priv;
+  info = _clutter_actor_get_transform_info_or_defaults (self);
 
-  return priv->width;
+  return info->width;
 }
 
 /**
@@ -5923,13 +5987,13 @@ clutter_actor_get_width (ClutterActor *self)
 gfloat
 clutter_actor_get_height (ClutterActor *self)
 {
-  ClutterActorPrivate *priv;
+  const ClutterTransformInfo *info;
 
   g_return_val_if_fail (CLUTTER_IS_ACTOR (self), 0);
 
-  priv = self->priv;
+  info = _clutter_actor_get_transform_info_or_defaults (self);
 
-  return priv->height;
+  return info->height;
 }
 
 /**
@@ -9021,6 +9085,11 @@ clutter_actor_set_animatable_property (ClutterActor *actor,
                                                  g_value_get_double (value));
       break;
 
+    case PROP_BACKGROUND_COLOR:
+      clutter_actor_set_background_color_internal (actor,
+                                                   (ClutterColor *) g_value_get_boxed (value));
+      break;
+
     default:
       g_object_set_property (obj, pspec->name, value);
       break;
@@ -9111,11 +9180,11 @@ clutter_actor_transform_stage_point (ClutterActor *self,
   int du, dv, xi, yi;
   float px, py;
   float xf, yf, wf, det;
-  ClutterActorPrivate *priv;
+  const ClutterTransformInfo *info;
 
   g_return_val_if_fail (CLUTTER_IS_ACTOR (self), FALSE);
 
-  priv = self->priv;
+  info = _clutter_actor_get_transform_info_or_defaults (self);
 
   /* This implementation is based on the quad -> quad projection algorithm
    * described by Paul Heckbert in:
@@ -9137,8 +9206,8 @@ clutter_actor_transform_stage_point (ClutterActor *self,
   /* Keeping these as ints simplifies the multiplication (no significant
    * loss of precision here).
    */
-  du = (int) priv->width;
-  dv = (int) priv->height;
+  du = (int) info->width;
+  dv = (int) info->height;
 
   if (!du || !dv)
     return FALSE;
@@ -10989,19 +11058,15 @@ clutter_actor_set_background_color_internal (ClutterActor *self,
                                              const ClutterColor *color)
 {
   ClutterActorPrivate *priv = self->priv;
-  GObject *obj;
+  ClutterTransformInfo *info = _clutter_actor_get_transform_info (self);
 
-  if (priv->bg_color_set && clutter_color_equal (color, &priv->bg_color))
+  if (priv->bg_color_set && clutter_color_equal (color, &info->bg_color))
     return;
 
-  obj = G_OBJECT (self);
-
-  priv->bg_color = *color;
+  info->bg_color = *color;
   priv->bg_color_set = TRUE;
 
   clutter_actor_queue_redraw (self);
-
-  g_object_notify_by_pspec (obj, obj_props[PROP_BACKGROUND_COLOR_SET]);
 }
 
 /**
@@ -11029,12 +11094,13 @@ clutter_actor_set_background_color (ClutterActor       *self,
   ClutterActorPrivate *priv;
   GObject *obj;
   GParamSpec *bg_color_pspec;
+  ClutterTransformInfo *info;
 
   g_return_if_fail (CLUTTER_IS_ACTOR (self));
 
   obj = G_OBJECT (self);
-
   priv = self->priv;
+  info = _clutter_actor_get_transform_info (self);
 
   if (color == NULL)
     {
@@ -11048,11 +11114,13 @@ clutter_actor_set_background_color (ClutterActor       *self,
   if (_clutter_actor_get_transition (self, bg_color_pspec) == NULL)
     {
       _clutter_actor_create_transition (self, bg_color_pspec,
-                                        &priv->bg_color,
+                                        &info->bg_color,
                                         color);
     }
   else
     _clutter_actor_update_transition (self, bg_color_pspec, color);
+
+  g_object_notify_by_pspec (obj, obj_props[PROP_BACKGROUND_COLOR_SET]);
 
   clutter_actor_queue_redraw (self);
 }
@@ -11070,10 +11138,14 @@ void
 clutter_actor_get_background_color (ClutterActor *self,
                                     ClutterColor *color)
 {
+  const ClutterTransformInfo *info;
+
   g_return_if_fail (CLUTTER_IS_ACTOR (self));
   g_return_if_fail (color != NULL);
 
-  *color = self->priv->bg_color;
+  info = _clutter_actor_get_transform_info_or_defaults (self);
+
+  *color = info->bg_color;
 }
 
 /**
@@ -12190,4 +12262,3 @@ clutter_actor_restore_easing_state (ClutterActor *self)
       info->cur_state = NULL;
     }
 }
-

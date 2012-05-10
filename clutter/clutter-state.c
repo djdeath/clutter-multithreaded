@@ -200,7 +200,7 @@ typedef struct StateAnimator {
 } StateAnimator;
 
 typedef struct State
-{ 
+{
   const gchar  *name;          /* interned string for this state name */
   GHashTable   *durations;     /* durations for transitions from various state
                                   names */
@@ -237,7 +237,7 @@ struct _ClutterStatePrivate
  *
  */
 typedef struct _ClutterStateKey
-{ 
+{
   GObject         *object;       /* an Gobject */
   const gchar     *property_name;/* the name of a property */
   gulong           mode;         /* alpha to use */
@@ -513,7 +513,7 @@ state_new (ClutterState *clutter_state,
   return state;
 }
 
-static void 
+static void
 clutter_state_finalize (GObject *object)
 {
   ClutterStatePrivate *priv = CLUTTER_STATE (object)->priv;
@@ -575,7 +575,7 @@ clutter_state_new_frame (ClutterTimeline *timeline,
         {
           if (key->source_state != NULL &&
               key->source_state->name != NULL &&
-              priv->source_state_name != NULL && 
+              priv->source_state_name != NULL &&
               g_str_equal (priv->source_state_name, key->source_state->name))
             {
               found_specific = TRUE;
@@ -858,9 +858,10 @@ get_property_from_object (GObject     *gobject,
   if (pspec == NULL)
     {
       g_warning ("Cannot bind property '%s': objects of type '%s' "
-                 "do not have this property",
+                 "animatable=%i do not have this property",
                  property_name,
-                 G_OBJECT_TYPE_NAME (gobject));
+                 G_OBJECT_TYPE_NAME (gobject),
+                 CLUTTER_IS_ANIMATABLE (gobject));
       return NULL;
     }
 
@@ -1604,7 +1605,7 @@ clutter_state_set_animator (ClutterState    *state,
   target_state = clutter_state_fetch_state (state, target_state_name, TRUE);
   if (target_state == NULL)
     return;
-  
+
   for (i = 0; target_state->animators->len; i++)
     {
       StateAnimator *a;
@@ -1942,7 +1943,7 @@ clutter_state_set_duration (ClutterState *state,
  *
  * The semantics for the query are the same as the semantics used for
  * setting the duration with clutter_state_set_duration()
- * 
+ *
  * Return value: the duration, in milliseconds
  *
  * Since: 1.4
@@ -2000,7 +2001,7 @@ clutter_state_get_duration (ClutterState *state,
  *
  * This function is useful when called from handlers of the
  * #ClutterState::completed signal.
- * 
+ *
  * Return value: a string containing the target state. The returned string
  *   is owned by the #ClutterState and should not be modified or freed
  *

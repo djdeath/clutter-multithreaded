@@ -170,6 +170,11 @@ struct _ClutterActorClass
   GInitiallyUnownedClass parent_class;
 
   /*< public >*/
+  guint (* get_data_size)       (ClutterActor          *self);
+  void  (* copy_data)           (ClutterActor          *self,
+                                 gpointer               dst,
+                                 gpointer               src);
+
   void (* show)                 (ClutterActor          *self);
   void (* hide)                 (ClutterActor          *self);
   void (* realize)              (ClutterActor          *self);

@@ -30,6 +30,7 @@
 
 #include <clutter/clutter-types.h>
 #include <clutter/clutter-actor.h>
+#include <clutter/clutter-entity.h>
 
 G_BEGIN_DECLS
 
@@ -195,6 +196,8 @@ void            clutter_stage_get_redraw_clip_bounds            (ClutterStage   
 void            clutter_stage_ensure_current                    (ClutterStage          *stage);
 void            clutter_stage_ensure_viewport                   (ClutterStage          *stage);
 void            clutter_stage_ensure_redraw                     (ClutterStage          *stage);
+
+void clutter_stage_append_entity (ClutterStage *stage, ClutterEntity *entity);
 
 G_END_DECLS
 

@@ -23,6 +23,7 @@
 #define __CLUTTER_ACTOR_PRIVATE_H__
 
 #include <clutter/clutter-actor.h>
+#include <clutter/clutter-color.h>
 
 G_BEGIN_DECLS
 
@@ -141,6 +142,9 @@ struct _ClutterTransformInfo
   gfloat fixed_x;
   gfloat fixed_y;
 
+  gfloat width;
+  gfloat height;
+
   /* rotation (angle and center) */
   gdouble rx_angle;
   AnchorCoord rx_center;
@@ -161,6 +165,9 @@ struct _ClutterTransformInfo
 
   /* depth */
   gfloat depth;
+
+  /* color */
+  ClutterColor bg_color;
 };
 
 const ClutterTransformInfo *    _clutter_actor_get_transform_info_or_defaults   (ClutterActor *self);
@@ -251,6 +258,10 @@ void _clutter_actor_push_clone_paint (void);
 void _clutter_actor_pop_clone_paint  (void);
 
 guint32 _clutter_actor_get_pick_id (ClutterActor *self);
+
+/* Datas */
+gpointer _clutter_actor_get_read_data    (ClutterActor *self);
+gpointer _clutter_actor_get_write_data   (ClutterActor *self);
 
 G_END_DECLS
 
