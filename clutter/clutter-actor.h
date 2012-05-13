@@ -228,9 +228,6 @@ struct _ClutterActorClass
 
   gboolean (* has_overlaps)         (ClutterActor         *self);
 
-  void     (* paint_node)           (ClutterActor         *self,
-                                     ClutterPaintNode     *root);
-
   /*< private >*/
   /* padding for future expansion */
   gpointer _padding_dummy[27];

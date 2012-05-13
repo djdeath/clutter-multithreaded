@@ -63,7 +63,6 @@
 #include "clutter-feature.h"
 #include "clutter-fixed-layout.h"
 #include "clutter-flow-layout.h"
-#include "clutter-image.h"
 #include "clutter-input-device.h"
 #include "clutter-interval.h"
 #include "clutter-keysyms.h"
