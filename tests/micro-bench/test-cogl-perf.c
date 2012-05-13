@@ -139,7 +139,7 @@ main (int argc, char *argv[])
   state.stage = stage = clutter_stage_new ();
 
   clutter_actor_set_size (stage, STAGE_WIDTH, STAGE_HEIGHT);
-  clutter_stage_set_color (CLUTTER_STAGE (stage), CLUTTER_COLOR_White);
+  clutter_actor_set_background_color (stage, CLUTTER_COLOR_White);
   clutter_stage_set_title (CLUTTER_STAGE (stage), "Cogl Performance Test");
 
   /* We want continuous redrawing of the stage... */

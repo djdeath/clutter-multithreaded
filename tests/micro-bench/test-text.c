@@ -53,12 +53,12 @@ main (int argc, char *argv[])
 
   stage = clutter_stage_new ();
   clutter_actor_set_size (stage, STAGE_WIDTH, STAGE_HEIGHT);
-  clutter_stage_set_color (CLUTTER_STAGE (stage), CLUTTER_COLOR_Black);
+  clutter_actor_set_background_color (stage, CLUTTER_COLOR_Black);
   clutter_stage_set_title (CLUTTER_STAGE (stage), "Text");
 
-  group = clutter_group_new ();
+  group = clutter_actor_new ();
   clutter_actor_set_size (group, STAGE_WIDTH, STAGE_WIDTH);
-  clutter_container_add_actor (CLUTTER_CONTAINER (stage), group);
+  clutter_actor_add_child (stage, group);
 
   clutter_threads_add_idle (queue_redraw, stage);
 
@@ -104,7 +104,7 @@ main (int argc, char *argv[])
                                               (1.0*STAGE_HEIGHT/ROWS));*/
           clutter_actor_set_scale (label, scale, scale);
           clutter_text_set_line_wrap (CLUTTER_TEXT (label), FALSE);
-          clutter_container_add_actor (CLUTTER_CONTAINER (group), label);
+          clutter_actor_add_child (group, label);
         }
   }
   clutter_actor_show (stage);

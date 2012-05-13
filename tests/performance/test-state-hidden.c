@@ -37,15 +37,17 @@ static ClutterActor *new_rect (gint r,
                                gint a)
 {
   ClutterColor *color = clutter_color_new (r, g, b, a);
-  ClutterActor *group = clutter_group_new ();
-  ClutterActor *rectangle = clutter_rectangle_new_with_color (color);
+  ClutterActor *group = clutter_actor_new ();
+  ClutterActor *rectangle = clutter_actor_new ();
+
+  clutter_actor_set_background_color (rectangle, color);
 
   gchar *file = g_build_filename (TESTS_DATA_DIR, "redhand.png", NULL);
 
   g_free (file);
   clutter_actor_set_size (rectangle, ACTOR_WIDTH,ACTOR_HEIGHT);
   clutter_color_free (color);
-  clutter_container_add (CLUTTER_CONTAINER (group), rectangle, NULL);
+  clutter_actor_add_child (group, rectangle);
   return group;
 }
 
@@ -63,10 +65,10 @@ main (gint    argc,
     g_error ("Failed to initialize Clutter");
 
   stage = clutter_stage_new ();
-  group = clutter_group_new ();
+  group = clutter_actor_new ();
   layout_state = clutter_state_new ();
   clutter_stage_set_title (CLUTTER_STAGE (stage), "State Performance [hidden]");
-  clutter_stage_set_color (CLUTTER_STAGE (stage), CLUTTER_COLOR_Black);
+  clutter_actor_set_background_color (stage, CLUTTER_COLOR_Black);
   clutter_actor_set_size (stage, STAGE_WIDTH, STAGE_HEIGHT);
   g_signal_connect (stage, "destroy", G_CALLBACK (clutter_main_quit), NULL);
 
@@ -80,14 +82,14 @@ main (gint    argc,
 
       actor = new_rect (255 * ( 1.0*col/COLS), 50,
                         255 * ( 1.0*row/ROWS), 255);
-      clutter_container_add_actor (CLUTTER_CONTAINER (group), actor);
+      clutter_actor_add_child (group, actor);
       clutter_actor_set_position (actor, 320.0, 240.0);
       clutter_actor_set_reactive (actor, TRUE);
 
 
       clutter_state_set (layout_state, NULL, "active",
             actor, "delayed::x", CLUTTER_LINEAR,
-                                         ACTOR_WIDTH * 1.0 * ((TOTAL-1-i) % COLS), 
+                                         ACTOR_WIDTH * 1.0 * ((TOTAL-1-i) % COLS),
                                         ((row*1.0/ROWS))/2, (1.0-(row*1.0/ROWS))/2,
             actor, "delayed::y", CLUTTER_LINEAR,
                                          ACTOR_HEIGHT * 1.0 * ((TOTAL-1-i) / COLS),
@@ -128,7 +130,7 @@ main (gint    argc,
 
       clutter_state_set_duration (a_state, NULL, NULL, 500);
     }
-  clutter_container_add_actor (CLUTTER_CONTAINER (stage), group);
+  clutter_actor_add_child (stage, group);
   clutter_actor_set_opacity (group, 0);
 
   clutter_state_set_duration (layout_state, NULL, NULL, 1000);

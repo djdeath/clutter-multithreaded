@@ -1,8 +1,8 @@
 SUBDIRS = data interactive micro-bench performance
 
-if BUILD_TESTS
-SUBDIRS += conform
-endif
+#if BUILD_TESTS
+#SUBDIRS += conform
+#endif
 
 DIST_SUBDIRS = accessibility data conform interactive micro-bench performance
 
