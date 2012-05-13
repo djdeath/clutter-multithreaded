@@ -29,6 +29,8 @@ stamp-marshal
 !/build/autotools/as-compiler-flag.m4
 *.gir
 *.typelib
+/clutter/clutter-properties-private.h
+/clutter/clutter-properties.c
 config.*
 configure
 depcomp
