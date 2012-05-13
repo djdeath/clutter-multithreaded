@@ -16,7 +16,7 @@
 #define CLUTTER_ENTITY_VALUE_WRITE(entity,type,prop)                    \
   (type *) &((clutter_property_get_value_write ((entity)->properties[CLUTTER_PROP_##prop]))->data.v_##type)
 #define CLUTTER_ENTITY_VALUE_DISPLAY(entity,type,prop)                  \
-  (type *) &((clutter_property_get_value_display ((entity)->properties[CLUTTER_PROP_##prop]))->data.v_##type)
+  (type *) &(((entity)->properties[CLUTTER_PROP_##prop])->display_value->data.v_##type)
 
 struct _ClutterEntity
 {
@@ -40,5 +40,8 @@ struct _ClutterEntityClass
 void clutter_entity_initialize_components (ClutterEntity *entity);
 
 void clutter_entity_draw (ClutterEntity *entity);
+
+ClutterStage *clutter_entity_get_stage (ClutterEntity *entity);
+
 
 #endif /* __CLUTTER_ENTITY_PRIVATE_H__ */

@@ -2,12 +2,20 @@
 #include "config.h"
 #endif
 
+#include "clutter-entity-private.h"
 #include "clutter-private.h"
 #include "clutter-property.h"
 #include "clutter-property-private.h"
 #include "clutter-properties-private.h"
+#include "clutter-stage-private.h"
 
 #include <gobject/gvaluecollector.h>
+
+#if 0
+# define DEBUG_ENTITY(args...) g_print (args)
+#else
+# define DEBUG_ENTITY(args...)
+#endif
 
 static void
 value_property_init (GValue *value)
@@ -212,6 +220,7 @@ clutter_value_new (ClutterProperty *property)
   ClutterValue *value = g_slice_new0 (ClutterValue);
 
   value->property = property;
+  DEBUG_ENTITY ("new value %p\n", value);
 
   return value;
 }
@@ -219,6 +228,7 @@ clutter_value_new (ClutterProperty *property)
 void
 clutter_value_free (ClutterValue *value)
 {
+  DEBUG_ENTITY ("free value %p\n", value);
   value->property->free (value);
   g_slice_free (ClutterValue, value);
 }
@@ -266,7 +276,9 @@ _value_pointer_init (ClutterValue *value)
 static ClutterValue *
 _value_copy (const ClutterValue *value)
 {
-  return g_slice_copy (sizeof (ClutterValue), value);
+  ClutterValue *ret = g_slice_dup (ClutterValue, value);
+  DEBUG_ENTITY ("copy value %p (from)=%p (prop)=%p/%p\n", ret, value, value->property, ret->property);
+  return ret;
 }
 
 static void
@@ -290,6 +302,7 @@ clutter_property_new (guint prop_n)
     (ClutterProperty *) g_type_create_instance (CLUTTER_TYPE_PROPERTY);
 
   prop->prop_n = prop_n;
+  DEBUG_ENTITY ("property new %p\n", prop);
 
   return prop;
 }
@@ -434,35 +447,43 @@ clutter_property_get_value_read (ClutterProperty *property)
 {
   g_return_val_if_fail (CLUTTER_IS_PROPERTY (property), NULL);
 
-  /* TODO_LIONEL: Is that necessary? */
-  if (property->active_value)
-    return property->active_value;
-
-  if (property->capture_value)
-    return property->capture_value;
-
-  return property->display_value;
+  return property->capture_value;
 }
 
 ClutterValue *
 clutter_property_get_value_write (ClutterProperty *property)
 {
+  ClutterValue *value;
+
   g_return_val_if_fail (CLUTTER_IS_PROPERTY (property), NULL);
 
-  if (property->active_value)
-    return property->active_value;
+  g_assert (property->entity != NULL);
 
-  property->active_value = property->copy (property->capture_value);
+  if (!property->entity->stage)
+    {
+      /* Special case when the entity hasn't been set on the stage
+         yet. */
+      if (property->capture_value == property->display_value)
+        property->capture_value = property->copy (property->capture_value);
+      value = property->capture_value;
+    }
+  else
+    {
+      value = property->copy (property->capture_value);
+      DEBUG_ENTITY ("\tprop value=%p (prop)=%p (display)=%p\n", value, value->property, value->property->display_value);
+      _clutter_stage_queue_value (property->entity->stage, value);
+      DEBUG_ENTITY ("\t2prop value=%p (prop)=%p (display)=%p\n", value, value->property, value->property->display_value);
+    }
 
-  return property->active_value;
+  return value;
 }
 
 ClutterValue *
 clutter_property_get_value_display (ClutterProperty *property)
 {
-  g_return_val_if_fail (CLUTTER_IS_PROPERTY (property), NULL);
+  /* g_return_val_if_fail (CLUTTER_IS_PROPERTY (property), NULL); */
 
-  /* This should never fail, this should be initialized when creating
+  /* This should never fail as it should be initialized when creating
      the property. */
   g_assert (property->display_value != NULL);
 

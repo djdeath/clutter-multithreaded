@@ -26,6 +26,7 @@
 #include <clutter/clutter-stage.h>
 #include <clutter/clutter-input-device.h>
 #include <clutter/clutter-private.h>
+#include <clutter/clutter-property.h>
 
 #include <cogl/cogl.h>
 
@@ -114,6 +115,8 @@ gboolean                _clutter_stage_is_fullscreen    (ClutterStage      *stag
 gboolean                _clutter_stage_update_state     (ClutterStage      *stage,
                                                          ClutterStageState  unset_state,
                                                          ClutterStageState  set_state);
+
+void _clutter_stage_queue_value (ClutterStage *stage, ClutterValue *value);
 
 G_END_DECLS
 

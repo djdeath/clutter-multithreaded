@@ -101,6 +101,12 @@ typedef enum { /*< prefix=CLUTTER_STAGE >*/
   CLUTTER_STAGE_NO_CLEAR_ON_PAINT = 1 << 0
 } ClutterStageHint;
 
+#if 0
+# define DEBUG_ENTITY(args...) g_print (args)
+#else
+# define DEBUG_ENTITY(args...)
+#endif
+
 #define STAGE_NO_CLEAR_ON_PAINT(s)      ((((ClutterStage *) (s))->priv->stage_hints & CLUTTER_STAGE_NO_CLEAR_ON_PAINT) != 0)
 
 struct _ClutterStageQueueRedrawEntry
@@ -175,6 +181,9 @@ struct _ClutterStagePrivate
 
   /* TODO_LIONE: to be wrapped for batch send to rendering thread. */
   GList *entities;
+
+  GList *captured_values;
+  GList *to_free_values;
 };
 
 enum
@@ -944,6 +953,13 @@ _clutter_stage_do_update (ClutterStage *stage)
 {
   ClutterStagePrivate *priv = stage->priv;
 
+  CLUTTER_STATIC_TIMER (free_values,
+                        "Master Clock", /* parent */
+                        "Free values",
+                        "The time freeing post rendering unused values",
+                        0 /* no application private data */);
+
+
   /* if the stage is being destroyed, or if the destruction already
    * happened and we don't have an StageWindow any more, then we
    * should bail out
@@ -979,6 +995,16 @@ _clutter_stage_do_update (ClutterStage *stage)
       priv->redraw_count = 0;
     }
 #endif /* CLUTTER_ENABLE_DEBUG */
+
+  CLUTTER_TIMER_START (_clutter_uprof_context, free_values);
+  while (priv->to_free_values != NULL)
+    {
+      clutter_value_free ((ClutterValue *) priv->to_free_values->data);
+
+      priv->to_free_values = g_list_delete_link (priv->to_free_values,
+                                                 priv->to_free_values);
+    }
+  CLUTTER_TIMER_STOP (_clutter_uprof_context, free_values);
 
   return TRUE;
 }
@@ -3391,21 +3417,30 @@ _clutter_stage_queue_redraw_entry_invalidate (ClutterStageQueueRedrawEntry *entr
 static void
 _clutter_stage_maybe_finish_queue_redraws (ClutterStage *stage)
 {
+  ClutterStagePrivate *priv = stage->priv;
+
+  CLUTTER_STATIC_TIMER (stage_update_properties,
+                        "Master Clock", /* parent */
+                        "Update properties",
+                        "The time spent update properties to the render thread",
+                        0 /* no application private data */);
+
+
   /* Note: we have to repeat until the pending_queue_redraws list is
    * empty because actors are allowed to queue redraws in response to
    * the queue-redraw signal. For example Clone actors or
    * texture_new_from_actor actors will have to queue a redraw if
    * their source queues a redraw.
    */
-  while (stage->priv->pending_queue_redraws)
+  while (priv->pending_queue_redraws)
     {
       GList *l;
       /* XXX: we need to allow stage->priv->pending_queue_redraws to
        * be updated while we process the current entries in the list
        * so we steal the list pointer and then reset it to an empty
        * list before processing... */
-      GList *stolen_list = stage->priv->pending_queue_redraws;
-      stage->priv->pending_queue_redraws = NULL;
+      GList *stolen_list = priv->pending_queue_redraws;
+      priv->pending_queue_redraws = NULL;
 
       for (l = stolen_list; l; l = l->next)
         {
@@ -3425,7 +3460,40 @@ _clutter_stage_maybe_finish_queue_redraws (ClutterStage *stage)
       g_list_free (stolen_list);
     }
 
-  /* TODO_LIONEL: */
+  /* TODO_LIONEL: List pointer should be locked */
+
+  /* Iterate the captured properties and update display values */
+  CLUTTER_TIMER_START (_clutter_uprof_context, stage_update_properties);
+  while (priv->captured_values != NULL)
+    {
+      ClutterValue *captured_value =
+        (ClutterValue *) priv->captured_values->data,
+        *old_display_value;
+      ClutterProperty *property = captured_value->property;
+
+      old_display_value = property->display_value;
+
+      g_print ("replace %f(%p) by %f(%p) for %s\n",
+               old_display_value->data.v_float, old_display_value,
+               captured_value->data.v_float, captured_value,
+               clutter_property_get_name (property));
+
+      /* Bootstrapping condition */
+      if (old_display_value != property->capture_value)
+        {
+          DEBUG_ENTITY ("queue_free %p\n", old_display_value);
+          priv->to_free_values = g_list_prepend (priv->to_free_values,
+                                                 old_display_value);
+        }
+
+      property->display_value = property->capture_value;
+      property->capture_value = captured_value;
+      DEBUG_ENTITY ("\tnew (display)=%p for (prop)=%p\n", property->display_value, property);
+
+      priv->captured_values = g_list_delete_link (priv->captured_values,
+                                                  priv->captured_values);
+    }
+  CLUTTER_TIMER_STOP (_clutter_uprof_context, stage_update_properties);
 }
 
 /**
@@ -3764,4 +3832,15 @@ clutter_stage_append_entity (ClutterStage *stage, ClutterEntity *entity)
   priv = stage->priv;
 
   priv->entities = g_list_append (priv->entities, g_object_ref_sink (entity));
+  entity->stage = stage;
+}
+
+void
+_clutter_stage_queue_value (ClutterStage *stage, ClutterValue *value)
+{
+  ClutterStagePrivate *priv = stage->priv;
+
+  DEBUG_ENTITY ("queue value %p (display)=%p (prop)=%p\n", value, value->property->display_value, value->property);
+  priv->captured_values = g_list_prepend (priv->captured_values, value);
+  clutter_actor_queue_redraw (CLUTTER_ACTOR (stage));
 }

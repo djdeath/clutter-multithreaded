@@ -2,16 +2,26 @@
 
 #include <stdlib.h>
 
+#define NB_ENTITIES (20)
+
 static guint pos;
 
+static ClutterEntity *rects[NB_ENTITIES];
+
 static gboolean
-timeout_cb (ClutterEntity *rect)
+timeout_cb (gpointer data)
 {
+  gint i;
+  static gint counter = 0;
+
   pos = (pos + 1) % 1024;
-  if (pos == 0)
-    clutter_entity_set_position (rect, 0, 0, 0);
-  else
-    clutter_entity_move_by (rect, 1, 0, 0);
+  for (i = 0; i < NB_ENTITIES; i++)
+    {
+      if (pos == 0)
+        clutter_entity_set_position (rects[i], i, i, 0);
+      else
+        clutter_entity_move_by (rects[i], 1, 0, 0);
+    }
 
   return TRUE;
 }
@@ -19,8 +29,8 @@ timeout_cb (ClutterEntity *rect)
 G_MODULE_EXPORT int
 test_entity_main (int argc, char *argv[])
 {
+  gint i;
   ClutterActor *stage;
-  ClutterEntity *rect;
 
   if (clutter_init (&argc, &argv) != CLUTTER_INIT_SUCCESS)
     return EXIT_FAILURE;
@@ -32,13 +42,17 @@ test_entity_main (int argc, char *argv[])
   clutter_stage_set_user_resizable (CLUTTER_STAGE (stage), TRUE);
 
   /* there are three flowers in a vase */
-  rect = clutter_entity_new ();
-  clutter_entity_append_component (rect, clutter_rectangle_component_new ());
-  clutter_stage_append_entity (CLUTTER_STAGE (stage), rect);
+  for (i = 0; i < NB_ENTITIES; i++)
+    {
+      rects[i] = clutter_entity_new ();
+      clutter_entity_append_component (rects[i], clutter_rectangle_component_new ());
+      clutter_stage_append_entity (CLUTTER_STAGE (stage), rects[i]);
+      clutter_entity_set_position (rects[i], i, i, 0);
+    }
 
   clutter_actor_show (stage);
 
-  g_timeout_add (20, (GSourceFunc) timeout_cb, rect);
+  g_timeout_add (20, (GSourceFunc) timeout_cb, NULL);
 
   clutter_main ();
 

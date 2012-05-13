@@ -104,14 +104,19 @@ clutter_entity_init (ClutterEntity *self)
                                                                   -G_MAXFLOAT,
                                                                   G_MAXFLOAT,
                                                                   0);
+  CLUTTER_ENTITY_PROPERTY (self, x)->entity = self;
+
   CLUTTER_ENTITY_PROPERTY (self, y) = clutter_property_float_new (CLUTTER_PROP (y),
                                                                   -G_MAXFLOAT,
                                                                   G_MAXFLOAT,
                                                                   0);
+  CLUTTER_ENTITY_PROPERTY (self, y)->entity = self;
+
   CLUTTER_ENTITY_PROPERTY (self, z) = clutter_property_float_new (CLUTTER_PROP (z),
                                                                   -G_MAXFLOAT,
                                                                   G_MAXFLOAT,
                                                                   0);
+  CLUTTER_ENTITY_PROPERTY (self, z)->entity = self;
 }
 
 const ClutterValue *
@@ -162,18 +167,34 @@ clutter_entity_initialize_components (ClutterEntity *entity)
 }
 
 void
-clutter_entity_draw (ClutterEntity *entity)
+clutter_entity_draw (ClutterEntity *self)
 {
   gint i;
 
-  for (i = 0; i < ARRAY_SIZE (entity->components); i++)
+  for (i = 0; i < ARRAY_SIZE (self->components); i++)
     {
-      ClutterComponent *component = entity->components[i];
+      ClutterComponent *component = self->components[i];
 
       if (component == NULL)
         break;
 
-      CLUTTER_COMPONENT_GET_CLASS (component)->draw (component, entity);
+      cogl_push_matrix ();
+
+      g_print ("%fx%fx%f %p/%p/%p\n",
+               *CLUTTER_ENTITY_VALUE_DISPLAY (self, float, x),
+               *CLUTTER_ENTITY_VALUE_DISPLAY (self, float, y),
+               *CLUTTER_ENTITY_VALUE_DISPLAY (self, float, z),
+               CLUTTER_ENTITY_PROPERTY (self, x)->display_value,
+               CLUTTER_ENTITY_PROPERTY (self, y)->display_value,
+               CLUTTER_ENTITY_PROPERTY (self, z)->display_value);
+
+      cogl_translate (*CLUTTER_ENTITY_VALUE_DISPLAY (self, float, x),
+                      *CLUTTER_ENTITY_VALUE_DISPLAY (self, float, y),
+                      *CLUTTER_ENTITY_VALUE_DISPLAY (self, float, z));
+
+      CLUTTER_COMPONENT_GET_CLASS (component)->draw (component, self);
+
+      cogl_pop_matrix ();
     }
 }
 
@@ -260,3 +281,12 @@ clutter_entity_move_by (ClutterEntity *self,
   if (dz != 0)
     *CLUTTER_ENTITY_VALUE_WRITE (self, float, z) += dz;
 }
+
+ClutterStage *
+clutter_entity_get_stage (ClutterEntity *entity)
+{
+  g_return_val_if_fail (CLUTTER_IS_ENTITY (entity), NULL);
+
+  return entity->stage;
+}
+

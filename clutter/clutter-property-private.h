@@ -22,10 +22,8 @@ typedef struct _ClutterPointerProperty ClutterPointerProperty;
 
 struct _ClutterValue
 {
-  /*< public >*/
   ClutterProperty *property;
 
-  /*< private >*/
   union {
     gint	v_int;
     guint	v_uint;
@@ -64,7 +62,6 @@ struct _ClutterProperty
   ClutterValueCopy copy;
   ClutterValueFree free;
 
-  ClutterValue *active_value;
   ClutterValue *capture_value;
   ClutterValue *display_value;
 };
