@@ -44,7 +44,6 @@
 #include "clutter-box-layout.h"
 #include "clutter-brightness-contrast-effect.h"
 #include "clutter-cairo-texture.h"
-#include "clutter-canvas.h"
 #include "clutter-child-meta.h"
 #include "clutter-clone.h"
 #include "clutter-color.h"
