@@ -18,7 +18,6 @@ clutter/clutter-clone.c
 clutter/clutter-color.c
 clutter/clutter-colorize-effect.c
 clutter/clutter-container.c
-clutter/clutter-content.c
 clutter/clutter-deform-effect.c
 clutter/clutter-desaturate-effect.c
 clutter/clutter-device-manager.c
@@ -33,7 +32,6 @@ clutter/clutter-layout-manager.c
 clutter/clutter-layout-meta.c
 clutter/clutter-main.c
 clutter/clutter-media.c
-clutter/clutter-paint-node.c
 clutter/clutter-path-constraint.c
 clutter/clutter-property-transition.c
 clutter/clutter-script.c

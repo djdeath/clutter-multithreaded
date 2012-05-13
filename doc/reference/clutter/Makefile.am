@@ -82,7 +82,6 @@ IGNORE_HFILES = \
 	clutter-marshal.h 		\
 	clutter-master-clock.h 		\
 	clutter-model-private.h 	\
-	clutter-paint-node-private.h	\
 	clutter-paint-volume-private.h	\
 	clutter-private.h 		\
 	clutter-profile.h		\
