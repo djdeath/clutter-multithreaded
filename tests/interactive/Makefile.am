@@ -33,7 +33,6 @@ UNIT_TESTS = \
         test-easing.c \
         test-binding-pool.c \
         test-text.c \
-        test-text-field.c \
 	test-cairo-clock.c \
 	test-cairo-flowers.c \
 	test-cogl-vertex-buffer.c \

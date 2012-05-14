@@ -37,7 +37,6 @@ clutter/clutter-snap-constraint.c
 clutter/clutter-stage.c
 clutter/clutter-stage-window.c
 clutter/clutter-state.c
-clutter/clutter-table-layout.c
 clutter/clutter-text-buffer.c
 clutter/clutter-text.c
 clutter/clutter-texture.c
