@@ -1756,26 +1756,6 @@ clutter_stage_class_init (ClutterStageClass *klass)
                                 CLUTTER_PARAM_READWRITE);
   g_object_class_install_property (gobject_class, PROP_ACCEPT_FOCUS, pspec);
 
-   /**
-   * ClutterActor::paint:
-   * @stage: the #ClutterStage that received the signal
-   *
-   * The ::paint signal is emitted each time a stage is being painted.
-   *
-   * It is possible to connect a handler to the ::paint signal in order
-   * to set up some custom aspect of a paint.
-   *
-   * Since: 0.8
-   */
-  stage_signals[PAINT] =
-    g_signal_new (I_("paint"),
-                  G_TYPE_FROM_CLASS (gobject_class),
-                  G_SIGNAL_RUN_LAST |
-                  G_SIGNAL_NO_HOOKS,
-                  0,
-                  NULL, NULL,
-                  _clutter_marshal_VOID__VOID,
-                  G_TYPE_NONE, 0);
   /**
    * ClutterStage::fullscreen
    * @stage: the stage which was fullscreened
@@ -3418,10 +3398,17 @@ static void
 _clutter_stage_maybe_finish_queue_redraws (ClutterStage *stage)
 {
   ClutterStagePrivate *priv = stage->priv;
+  GList *l;
 
-  CLUTTER_STATIC_TIMER (stage_update_properties,
+  CLUTTER_STATIC_TIMER (stage_capture_properties,
                         "Master Clock", /* parent */
-                        "Update properties",
+                        "Capture properties",
+                        "The time spent update properties from the application thread",
+                        0 /* no application private data */);
+
+  CLUTTER_STATIC_TIMER (stage_display_properties,
+                        "Master Clock", /* parent */
+                        "Update display properties",
                         "The time spent update properties to the render thread",
                         0 /* no application private data */);
 
@@ -3434,7 +3421,6 @@ _clutter_stage_maybe_finish_queue_redraws (ClutterStage *stage)
    */
   while (priv->pending_queue_redraws)
     {
-      GList *l;
       /* XXX: we need to allow stage->priv->pending_queue_redraws to
        * be updated while we process the current entries in the list
        * so we steal the list pointer and then reset it to an empty
@@ -3460,10 +3446,24 @@ _clutter_stage_maybe_finish_queue_redraws (ClutterStage *stage)
       g_list_free (stolen_list);
     }
 
-  /* TODO_LIONEL: List pointer should be locked */
+  /* Iterate the queued properties and put them in the capture snapshot */
+  CLUTTER_TIMER_START (_clutter_uprof_context, stage_capture_properties);
+  l = priv->captured_values;
+  while (l != NULL)
+    {
+      ClutterValue *captured_value = (ClutterValue *) l->data;
+      ClutterProperty *property = captured_value->property;
 
-  /* Iterate the captured properties and update display values */
-  CLUTTER_TIMER_START (_clutter_uprof_context, stage_update_properties);
+      property->capture_value = captured_value;
+
+      l = l->next;
+    }
+  CLUTTER_TIMER_STOP (_clutter_uprof_context, stage_capture_properties);
+
+  /* TODO_LIONEL: At this point we push the captured list to the
+     render thread to be processed as update to display snapshot. */
+
+  CLUTTER_TIMER_START (_clutter_uprof_context, stage_display_properties);
   while (priv->captured_values != NULL)
     {
       ClutterValue *captured_value =
@@ -3472,11 +3472,6 @@ _clutter_stage_maybe_finish_queue_redraws (ClutterStage *stage)
       ClutterProperty *property = captured_value->property;
 
       old_display_value = property->display_value;
-
-      g_print ("replace %f(%p) by %f(%p) for %s\n",
-               old_display_value->data.v_float, old_display_value,
-               captured_value->data.v_float, captured_value,
-               clutter_property_get_name (property));
 
       /* Bootstrapping condition */
       if (old_display_value != property->capture_value)
@@ -3487,13 +3482,13 @@ _clutter_stage_maybe_finish_queue_redraws (ClutterStage *stage)
         }
 
       property->display_value = property->capture_value;
-      property->capture_value = captured_value;
-      DEBUG_ENTITY ("\tnew (display)=%p for (prop)=%p\n", property->display_value, property);
+      DEBUG_ENTITY ("\tnew (display)=%p for (prop)=%p\n",
+                    property->display_value, property);
 
       priv->captured_values = g_list_delete_link (priv->captured_values,
                                                   priv->captured_values);
     }
-  CLUTTER_TIMER_STOP (_clutter_uprof_context, stage_update_properties);
+  CLUTTER_TIMER_STOP (_clutter_uprof_context, stage_display_properties);
 }
 
 /**

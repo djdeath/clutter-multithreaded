@@ -180,14 +180,6 @@ clutter_entity_draw (ClutterEntity *self)
 
       cogl_push_matrix ();
 
-      g_print ("%fx%fx%f %p/%p/%p\n",
-               *CLUTTER_ENTITY_VALUE_DISPLAY (self, float, x),
-               *CLUTTER_ENTITY_VALUE_DISPLAY (self, float, y),
-               *CLUTTER_ENTITY_VALUE_DISPLAY (self, float, z),
-               CLUTTER_ENTITY_PROPERTY (self, x)->display_value,
-               CLUTTER_ENTITY_PROPERTY (self, y)->display_value,
-               CLUTTER_ENTITY_PROPERTY (self, z)->display_value);
-
       cogl_translate (*CLUTTER_ENTITY_VALUE_DISPLAY (self, float, x),
                       *CLUTTER_ENTITY_VALUE_DISPLAY (self, float, y),
                       *CLUTTER_ENTITY_VALUE_DISPLAY (self, float, z));

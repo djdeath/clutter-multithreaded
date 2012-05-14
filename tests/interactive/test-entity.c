@@ -2,7 +2,7 @@
 
 #include <stdlib.h>
 
-#define NB_ENTITIES (20)
+#define NB_ENTITIES (2000)
 
 static guint pos;
 
