@@ -475,24 +475,6 @@ typedef enum { /*< prefix=CLUTTER_EFFECT_PAINT >*/
 } ClutterEffectPaintFlags;
 
 /**
- * ClutterBoxAlignment:
- * @CLUTTER_BOX_ALIGNMENT_START: Align the child to the top or to
- *   to the left, depending on the used axis
- * @CLUTTER_BOX_ALIGNMENT_CENTER: Align the child to the center
- * @CLUTTER_BOX_ALIGNMENT_END: Align the child to the bottom or to
- *   the right, depending on the used axis
- *
- * The alignment policies available on each axis of the #ClutterBoxLayout
- *
- * Since: 1.2
- */
-typedef enum {
-  CLUTTER_BOX_ALIGNMENT_START,
-  CLUTTER_BOX_ALIGNMENT_END,
-  CLUTTER_BOX_ALIGNMENT_CENTER
-} ClutterBoxAlignment;
-
-/**
  * ClutterLongPressState:
  * @CLUTTER_LONG_PRESS_QUERY: Queries the action whether it supports
  *   long presses

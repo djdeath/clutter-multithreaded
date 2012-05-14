@@ -40,7 +40,6 @@
 #include "clutter-backend.h"
 #include "clutter-binding-pool.h"
 #include "clutter-blur-effect.h"
-#include "clutter-box-layout.h"
 #include "clutter-brightness-contrast-effect.h"
 #include "clutter-cairo-texture.h"
 #include "clutter-child-meta.h"

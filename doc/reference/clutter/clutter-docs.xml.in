@@ -78,12 +78,6 @@
     </chapter>
 
     <chapter>
-      <title>Layout managers</title>
-
-      <xi:include href="xml/clutter-box-layout.xml"/>
-    </chapter>
-
-    <chapter>
       <title>Constraints</title>
 
       <xi:include href="xml/clutter-align-constraint.xml"/>
