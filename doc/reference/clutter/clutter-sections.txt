@@ -2197,30 +2197,6 @@ clutter_layout_manager_get_type
 </SECTION>
 
 <SECTION>
-<TITLE>ClutterBinLayout</TITLE>
-<FILE>clutter-bin-layout</FILE>
-ClutterBinAlignment
-ClutterBinLayout
-ClutterBinLayoutClass
-clutter_bin_layout_new
-clutter_bin_layout_set_alignment
-clutter_bin_layout_get_alignment
-clutter_bin_layout_add
-
-<SUBSECTION Standard>
-CLUTTER_TYPE_BIN_LAYOUT
-CLUTTER_BIN_LAYOUT
-CLUTTER_BIN_LAYOUT_CLASS
-CLUTTER_IS_BIN_LAYOUT
-CLUTTER_IS_BIN_LAYOUT_CLASS
-CLUTTER_BIN_LAYOUT_GET_CLASS
-
-<SUBSECTION Private>
-ClutterBinLayoutPrivate
-clutter_bin_layout_get_type
-</SECTION>
-
-<SECTION>
 <TITLE>ClutterBox</TITLE>
 <FILE>clutter-box</FILE>
 ClutterBox

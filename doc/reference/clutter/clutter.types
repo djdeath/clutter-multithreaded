@@ -16,7 +16,6 @@ clutter_behaviour_rotate_get_type
 clutter_behaviour_scale_get_type
 clutter_bind_constraint_get_type
 clutter_binding_pool_get_type
-clutter_bin_layout_get_type
 clutter_blur_effect_get_type
 clutter_box_get_type
 clutter_box_layout_get_type

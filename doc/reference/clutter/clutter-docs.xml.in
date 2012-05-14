@@ -80,7 +80,6 @@
     <chapter>
       <title>Layout managers</title>
 
-      <xi:include href="xml/clutter-bin-layout.xml"/>
       <xi:include href="xml/clutter-box-layout.xml"/>
     </chapter>
 
