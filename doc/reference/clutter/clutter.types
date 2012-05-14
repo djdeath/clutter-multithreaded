@@ -1,5 +1,4 @@
 #include <clutter/clutter.h>
-clutter_action_get_type
 clutter_actor_get_type
 clutter_actor_meta_get_type
 clutter_align_constraint_get_type
@@ -24,7 +23,6 @@ clutter_box_layout_get_type
 clutter_brightness_contrast_effect_get_type
 clutter_cairo_texture_get_type
 clutter_child_meta_get_type
-clutter_click_action_get_type
 clutter_clone_get_type
 clutter_colorize_effect_get_type
 clutter_constraint_get_type
@@ -33,10 +31,7 @@ clutter_content_get_type
 clutter_deform_effect_get_type
 clutter_desaturate_effect_get_type
 clutter_device_manager_get_type
-clutter_drag_action_get_type
-clutter_drop_action_get_type
 clutter_effect_get_type
-clutter_gesture_action_get_type
 clutter_group_get_type
 clutter_input_device_get_type
 clutter_interval_get_type
@@ -62,7 +57,6 @@ clutter_snap_constraint_get_type
 clutter_stage_get_type
 clutter_stage_manager_get_type
 clutter_state_get_type
-clutter_swipe_action_get_type
 clutter_table_layout_get_type
 clutter_text_buffer_get_type
 clutter_text_get_type

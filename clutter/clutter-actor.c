@@ -484,7 +484,6 @@
 #include "clutter-debug.h"
 #include "clutter-effect-private.h"
 #include "clutter-enum-types.h"
-#include "clutter-fixed-layout.h"
 #include "clutter-flatten-effect.h"
 #include "clutter-interval.h"
 #include "clutter-main.h"

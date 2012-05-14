@@ -86,16 +86,6 @@
     </chapter>
 
     <chapter>
-      <title>Actions</title>
-
-      <xi:include href="xml/clutter-click-action.xml"/>
-      <xi:include href="xml/clutter-drag-action.xml"/>
-      <xi:include href="xml/clutter-drop-action.xml"/>
-      <xi:include href="xml/clutter-gesture-action.xml"/>
-      <xi:include href="xml/clutter-swipe-action.xml"/>
-    </chapter>
-
-    <chapter>
       <title>Constraints</title>
 
       <xi:include href="xml/clutter-align-constraint.xml"/>

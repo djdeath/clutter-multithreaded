@@ -892,24 +892,6 @@ typedef enum {
 } ClutterInputAxis;
 
 /**
- * ClutterSnapEdge:
- * @CLUTTER_SNAP_EDGE_TOP: the top edge
- * @CLUTTER_SNAP_EDGE_RIGHT: the right edge
- * @CLUTTER_SNAP_EDGE_BOTTOM: the bottom edge
- * @CLUTTER_SNAP_EDGE_LEFT: the left edge
- *
- * The edge to snap
- *
- * Since: 1.6
- */
-typedef enum {
-  CLUTTER_SNAP_EDGE_TOP,
-  CLUTTER_SNAP_EDGE_RIGHT,
-  CLUTTER_SNAP_EDGE_BOTTOM,
-  CLUTTER_SNAP_EDGE_LEFT
-} ClutterSnapEdge;
-
-/**
  * ClutterPickMode:
  * @CLUTTER_PICK_NONE: Do not paint any actor
  * @CLUTTER_PICK_REACTIVE: Paint only the reactive actors
@@ -924,24 +906,6 @@ typedef enum {
   CLUTTER_PICK_REACTIVE,
   CLUTTER_PICK_ALL
 } ClutterPickMode;
-
-/**
- * ClutterSwipeDirection:
- * @CLUTTER_SWIPE_DIRECTION_UP: Upwards swipe gesture
- * @CLUTTER_SWIPE_DIRECTION_DOWN: Downwards swipe gesture
- * @CLUTTER_SWIPE_DIRECTION_LEFT: Leftwards swipe gesture
- * @CLUTTER_SWIPE_DIRECTION_RIGHT: Rightwards swipe gesture
- *
- * The main direction of the swipe gesture
- *
- * Since: 1.8
- */
-typedef enum { /*< prefix=CLUTTER_SWIPE_DIRECTION >*/
-  CLUTTER_SWIPE_DIRECTION_UP    = 1 << 0,
-  CLUTTER_SWIPE_DIRECTION_DOWN  = 1 << 1,
-  CLUTTER_SWIPE_DIRECTION_LEFT  = 1 << 2,
-  CLUTTER_SWIPE_DIRECTION_RIGHT = 1 << 3
-} ClutterSwipeDirection;
 
 /**
  * ClutterTableAlignment:

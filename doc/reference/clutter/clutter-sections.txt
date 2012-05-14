@@ -2490,35 +2490,6 @@ ClutterStatePrivate
 </SECTION>
 
 <SECTION>
-<FILE>clutter-click-action</FILE>
-<TITLE>ClutterClickAction</TITLE>
-ClutterClickAction
-ClutterClickActionClass
-ClutterLongPressState
-clutter_click_action_new
-
-<SUBSECTION>
-clutter_click_action_get_button
-clutter_click_action_get_state
-clutter_click_action_get_coords
-
-<SUBSECTION>
-clutter_click_action_release
-
-<SUBSECTION Standard>
-CLUTTER_TYPE_CLICK_ACTION
-CLUTTER_CLICK_ACTION
-CLUTTER_CLICK_ACTION_CLASS
-CLUTTER_IS_CLICK_ACTION
-CLUTTER_IS_CLICK_ACTION_CLASS
-CLUTTER_CLICK_ACTION_GET_CLASS
-clutter_click_action_get_type
-
-<SUBSECTION Private>
-ClutterClickActionPrivate
-</SECTION>
-
-<SECTION>
 <TITLE>ClutterEffect</TITLE>
 <FILE>clutter-effect</FILE>
 ClutterEffect
