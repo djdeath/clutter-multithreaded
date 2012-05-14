@@ -80,9 +80,7 @@
     <chapter>
       <title>Layout managers</title>
 
-      <xi:include href="xml/clutter-fixed-layout.xml"/>
       <xi:include href="xml/clutter-bin-layout.xml"/>
-      <xi:include href="xml/clutter-flow-layout.xml"/>
       <xi:include href="xml/clutter-box-layout.xml"/>
       <xi:include href="xml/clutter-table-layout.xml"/>
     </chapter>
