@@ -36,7 +36,8 @@ typedef struct _ClutterMasterClock      ClutterMasterClock;
 
 GType _clutter_master_clock_get_type (void) G_GNUC_CONST;
 
-ClutterMasterClock *    _clutter_master_clock_get_default               (void);
+ClutterMasterClock *_clutter_master_clock_new (void);
+void _clutter_master_clock_start (ClutterMasterClock *master_clock);
 void                    _clutter_master_clock_add_timeline              (ClutterMasterClock *master_clock,
                                                                          ClutterTimeline    *timeline);
 void                    _clutter_master_clock_remove_timeline           (ClutterMasterClock *master_clock,

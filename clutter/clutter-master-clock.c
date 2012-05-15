@@ -66,6 +66,8 @@ struct _ClutterMasterClock
 {
   GObject parent_instance;
 
+  gchar *name;
+
   /* the list of timelines handled by the clock */
   GSList *timelines;
 
@@ -556,10 +558,7 @@ clutter_master_clock_class_init (ClutterMasterClockClass *klass)
 static void
 clutter_master_clock_init (ClutterMasterClock *self)
 {
-  GSource *source;
-
-  source = clutter_clock_source_new (self);
-  self->source = source;
+  self->source = clutter_clock_source_new (self);
 
   self->idle = FALSE;
   self->ensure_next_iteration = FALSE;
@@ -568,29 +567,27 @@ clutter_master_clock_init (ClutterMasterClock *self)
   self->frame_budget = G_USEC_PER_SEC / 60;
 #endif
 
-  g_source_set_priority (source, CLUTTER_PRIORITY_REDRAW);
-  g_source_set_can_recurse (source, FALSE);
-  g_source_attach (source, NULL);
+  g_source_set_priority (self->source, CLUTTER_PRIORITY_REDRAW);
+  g_source_set_can_recurse (self->source, FALSE);
 }
 
 /*
- * _clutter_master_clock_get_default:
+ * _clutter_master_clock_new:
  *
- * Retrieves the default master clock. If this function has never
- * been called before, the default master clock is created.
+ * Creates a new master clock.
  *
- * Return value: the default master clock. The returned object is
- *   owned by Clutter and should not be modified or freed
+ * Return value: a new master master clock.
  */
 ClutterMasterClock *
-_clutter_master_clock_get_default (void)
+_clutter_master_clock_new (void)
 {
-  ClutterMainContext *context = _clutter_context_get_default ();
+  return g_object_new (CLUTTER_TYPE_MASTER_CLOCK, NULL);
+}
 
-  if (G_UNLIKELY (context->master_clock == NULL))
-    context->master_clock = g_object_new (CLUTTER_TYPE_MASTER_CLOCK, NULL);
-
-  return context->master_clock;
+void
+_clutter_master_clock_start (ClutterMasterClock *master_clock)
+{
+  g_source_attach (master_clock->source, NULL);
 }
 
 /*

@@ -178,10 +178,9 @@ struct _ClutterStagePrivate
   guint motion_events_enabled  : 1;
   guint has_custom_perspective : 1;
 
-
-  /* TODO_LIONEL: to be wrapped for batch send to rendering thread. */
   GList *entities;
 
+  /* TODO_LIONEL: to be wrapped for batch send to rendering thread. */
   GList *to_free_values;
 };
 
@@ -758,7 +757,7 @@ _clutter_stage_queue_event (ClutterStage *stage,
 
   if (first_event)
     {
-      ClutterMasterClock *master_clock = _clutter_master_clock_get_default ();
+      ClutterMasterClock *master_clock = _clutter_context_get_master_clock ();
       _clutter_master_clock_start_running (master_clock);
     }
 
@@ -3044,7 +3043,7 @@ clutter_stage_ensure_redraw (ClutterStage *stage)
   priv = stage->priv;
   priv->redraw_pending = TRUE;
 
-  master_clock = _clutter_master_clock_get_default ();
+  master_clock = _clutter_context_get_master_clock ();
   _clutter_master_clock_start_running (master_clock);
 }
 
@@ -3330,7 +3329,7 @@ _clutter_stage_queue_actor_redraw (ClutterStage *stage,
 
       priv->redraw_pending = TRUE;
 
-      master_clock = _clutter_master_clock_get_default ();
+      master_clock = _clutter_context_get_master_clock ();
       _clutter_master_clock_start_running (master_clock);
     }
 #ifdef CLUTTER_ENABLE_DEBUG

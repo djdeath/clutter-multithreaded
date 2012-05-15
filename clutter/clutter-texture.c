@@ -1672,7 +1672,7 @@ texture_repaint_upload_func (gpointer user_data)
     {
       ClutterMasterClock *master_clock;
 
-      master_clock = _clutter_master_clock_get_default ();
+      master_clock = _clutter_context_get_master_clock ();
       _clutter_master_clock_ensure_next_iteration (master_clock);
     }
 
@@ -1686,7 +1686,7 @@ clutter_texture_thread_load (gpointer user_data,
                              gpointer pool_data)
 {
   ClutterTextureAsyncData *async_data = user_data;
-  ClutterMasterClock *master_clock = _clutter_master_clock_get_default ();
+  ClutterMasterClock *master_clock = _clutter_context_get_master_clock ();
 
   clutter_texture_async_data_lock (async_data);
 

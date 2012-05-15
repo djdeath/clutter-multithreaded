@@ -492,7 +492,7 @@ clutter_timeline_finalize (GObject *object)
 
   if (priv->is_playing)
     {
-      master_clock = _clutter_master_clock_get_default ();
+      master_clock = _clutter_context_get_master_clock ();
       _clutter_master_clock_remove_timeline (master_clock, self);
     }
 
@@ -899,7 +899,7 @@ set_is_playing (ClutterTimeline *timeline,
     return;
 
   priv->is_playing = is_playing;
-  master_clock = _clutter_master_clock_get_default ();
+  master_clock = _clutter_context_get_master_clock ();
   if (priv->is_playing)
     {
       _clutter_master_clock_add_timeline (master_clock, timeline);

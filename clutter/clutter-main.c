@@ -1188,6 +1188,19 @@ _clutter_context_is_initialized (void)
   return ClutterCntx->is_initialized;
 }
 
+ClutterMasterClock *
+_clutter_context_get_master_clock (void)
+{
+  if (ClutterCntx->master_clock == NULL)
+    {
+      ClutterCntx->master_clock = _clutter_master_clock_new ();
+      _clutter_master_clock_start (ClutterCntx->master_clock);
+    }
+
+  return ClutterCntx->master_clock;
+}
+
+
 static ClutterBackend *
 clutter_create_backend (void)
 {
@@ -3041,7 +3054,7 @@ clutter_threads_add_repaint_func_full (ClutterRepaintFlags flags,
 
   if ((flags & CLUTTER_REPAINT_FLAGS_QUEUE_REDRAW_ON_ADD) != 0)
     {
-      ClutterMasterClock *master_clock = _clutter_master_clock_get_default ();
+      ClutterMasterClock *master_clock = _clutter_context_get_master_clock ();
 
       _clutter_master_clock_ensure_next_iteration (master_clock);
     }
