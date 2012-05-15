@@ -179,10 +179,9 @@ struct _ClutterStagePrivate
   guint has_custom_perspective : 1;
 
 
-  /* TODO_LIONE: to be wrapped for batch send to rendering thread. */
+  /* TODO_LIONEL: to be wrapped for batch send to rendering thread. */
   GList *entities;
 
-  GList *captured_values;
   GList *to_free_values;
 };
 
@@ -205,7 +204,6 @@ enum
 
 enum
 {
-  PAINT,
   FULLSCREEN,
   UNFULLSCREEN,
   ACTIVATE,
@@ -222,6 +220,42 @@ static const ClutterColor default_stage_color = { 255, 255, 255, 255 };
 static void _clutter_stage_sync_sizes (ClutterStage *self);
 
 static void _clutter_stage_maybe_finish_queue_redraws (ClutterStage *stage);
+
+static gboolean _clutter_stage_capture_active_values (void);
+
+static GList *global_captured_list = NULL;
+
+/**/
+
+/* Per thread list of active values */
+
+typedef struct
+{
+  gboolean update_queued;
+
+  GList *active_values;
+} ThreadActiveDatas;
+
+static void
+free_active_values (gpointer data)
+{
+  ThreadActiveDatas *datas = (ThreadActiveDatas *) data;
+
+  while (datas->active_values)
+    {
+      ClutterValue *val = (ClutterValue *) datas->active_values->data;
+
+      clutter_value_free (val);
+      datas->active_values = g_list_delete_link (datas->active_values,
+                                                 datas->active_values);
+    }
+
+  g_free (datas);
+}
+
+static GPrivate queued_active_values = G_PRIVATE_INIT (free_active_values);
+
+/**/
 
 static inline void
 queue_full_redraw (ClutterStage *stage)
@@ -556,8 +590,6 @@ clutter_stage_paint (ClutterActor *self)
   cogl_color_premultiply (&stage_color);
   cogl_clear (&stage_color, clear_flags);
   CLUTTER_TIMER_STOP (_clutter_uprof_context, stage_clear_timer);
-
-  g_signal_emit (self, stage_signals[PAINT], 0);
 
   clutter_actor_iter_init (&iter, self);
   while (clutter_actor_iter_next (&iter, &child))
@@ -959,6 +991,7 @@ _clutter_stage_do_update (ClutterStage *stage)
                         "The time freeing post rendering unused values",
                         0 /* no application private data */);
 
+  _clutter_stage_capture_active_values ();
 
   /* if the stage is being destroyed, or if the destruction already
    * happened and we don't have an StageWindow any more, then we
@@ -3398,13 +3431,6 @@ static void
 _clutter_stage_maybe_finish_queue_redraws (ClutterStage *stage)
 {
   ClutterStagePrivate *priv = stage->priv;
-  GList *l;
-
-  CLUTTER_STATIC_TIMER (stage_capture_properties,
-                        "Master Clock", /* parent */
-                        "Capture properties",
-                        "The time spent update properties from the application thread",
-                        0 /* no application private data */);
 
   CLUTTER_STATIC_TIMER (stage_display_properties,
                         "Master Clock", /* parent */
@@ -3425,7 +3451,7 @@ _clutter_stage_maybe_finish_queue_redraws (ClutterStage *stage)
        * be updated while we process the current entries in the list
        * so we steal the list pointer and then reset it to an empty
        * list before processing... */
-      GList *stolen_list = priv->pending_queue_redraws;
+      GList *l, *stolen_list = priv->pending_queue_redraws;
       priv->pending_queue_redraws = NULL;
 
       for (l = stolen_list; l; l = l->next)
@@ -3446,28 +3472,11 @@ _clutter_stage_maybe_finish_queue_redraws (ClutterStage *stage)
       g_list_free (stolen_list);
     }
 
-  /* Iterate the queued properties and put them in the capture snapshot */
-  CLUTTER_TIMER_START (_clutter_uprof_context, stage_capture_properties);
-  l = priv->captured_values;
-  while (l != NULL)
-    {
-      ClutterValue *captured_value = (ClutterValue *) l->data;
-      ClutterProperty *property = captured_value->property;
-
-      property->capture_value = captured_value;
-
-      l = l->next;
-    }
-  CLUTTER_TIMER_STOP (_clutter_uprof_context, stage_capture_properties);
-
-  /* TODO_LIONEL: At this point we push the captured list to the
-     render thread to be processed as update to display snapshot. */
-
   CLUTTER_TIMER_START (_clutter_uprof_context, stage_display_properties);
-  while (priv->captured_values != NULL)
+  while (global_captured_list != NULL)
     {
       ClutterValue *captured_value =
-        (ClutterValue *) priv->captured_values->data,
+        (ClutterValue *) global_captured_list->data,
         *old_display_value;
       ClutterProperty *property = captured_value->property;
 
@@ -3485,8 +3494,8 @@ _clutter_stage_maybe_finish_queue_redraws (ClutterStage *stage)
       DEBUG_ENTITY ("\tnew (display)=%p for (prop)=%p\n",
                     property->display_value, property);
 
-      priv->captured_values = g_list_delete_link (priv->captured_values,
-                                                  priv->captured_values);
+      global_captured_list = g_list_delete_link (global_captured_list,
+                                                 global_captured_list);
     }
   CLUTTER_TIMER_STOP (_clutter_uprof_context, stage_display_properties);
 }
@@ -3830,12 +3839,72 @@ clutter_stage_append_entity (ClutterStage *stage, ClutterEntity *entity)
   entity->stage = stage;
 }
 
+/**/
+
+static gboolean
+_clutter_stage_capture_active_values (void)
+{
+  ThreadActiveDatas *datas = (ThreadActiveDatas *) g_private_get (&queued_active_values);
+  GList *l, *active_values = datas->active_values;
+
+  CLUTTER_STATIC_TIMER (stage_capture_properties,
+                        "Master Clock", /* parent */
+                        "Capture properties",
+                        "The time spent update properties from the application thread",
+                        0 /* no application private data */);
+
+  datas->active_values = NULL;
+  datas->update_queued = FALSE;
+
+  /* Iterate the queued properties and put them in the capture snapshot */
+  CLUTTER_TIMER_START (_clutter_uprof_context, stage_capture_properties);
+  l = active_values;
+  while (l != NULL)
+    {
+      ClutterValue *captured_value = (ClutterValue *) l->data;
+      ClutterProperty *property = captured_value->property;
+
+      property->capture_value = captured_value;
+
+      l = l->next;
+    }
+
+  /* TODO_LIONEL: take a lock on render thread here and push the
+     capture list to the render thread. */
+  global_captured_list = active_values; /* Might need to use a special
+                                           kind of linked list to
+                                           speedup insertion */
+
+  CLUTTER_TIMER_STOP (_clutter_uprof_context, stage_capture_properties);
+
+  return FALSE;
+}
+
 void
 _clutter_stage_queue_value (ClutterStage *stage, ClutterValue *value)
 {
-  ClutterStagePrivate *priv = stage->priv;
+  ThreadActiveDatas *datas;
 
-  DEBUG_ENTITY ("queue value %p (display)=%p (prop)=%p\n", value, value->property->display_value, value->property);
-  priv->captured_values = g_list_prepend (priv->captured_values, value);
-  clutter_actor_queue_redraw (CLUTTER_ACTOR (stage));
+  g_return_if_fail (CLUTTER_IS_STAGE (stage));
+  g_return_if_fail (value != NULL);
+
+  datas = (ThreadActiveDatas *) g_private_get (&queued_active_values);
+  if (!datas)
+    {
+      datas = g_new0 (ThreadActiveDatas, 1);
+      g_private_set (&queued_active_values, datas);
+    }
+
+  DEBUG_ENTITY ("queue value %p (display)=%p (prop)=%p\n",
+                value, value->property->display_value, value->property);
+
+  datas->active_values = g_list_prepend (datas->active_values, value);
+
+  if (!datas->update_queued)
+    {
+      datas->update_queued = TRUE;
+      /* TODO_LIONEL: this queue redraw should be removed once we're
+         multithreaded */
+      clutter_actor_queue_redraw (CLUTTER_ACTOR (stage));
+    }
 }
