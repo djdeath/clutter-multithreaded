@@ -101,14 +101,6 @@ void            _clutter_stage_release_pick_id          (ClutterStage *stage,
 ClutterActor *  _clutter_stage_get_actor_by_pick_id     (ClutterStage *stage,
                                                          gint32        pick_id);
 
-void            _clutter_stage_add_drag_actor           (ClutterStage       *stage,
-                                                         ClutterInputDevice *device,
-                                                         ClutterActor       *actor);
-ClutterActor *  _clutter_stage_get_drag_actor           (ClutterStage       *stage,
-                                                         ClutterInputDevice *device);
-void            _clutter_stage_remove_drag_actor        (ClutterStage       *stage,
-                                                         ClutterInputDevice *device);
-
 ClutterStageState       _clutter_stage_get_state        (ClutterStage      *stage);
 gboolean                _clutter_stage_is_activated     (ClutterStage      *stage);
 gboolean                _clutter_stage_is_fullscreen    (ClutterStage      *stage);
