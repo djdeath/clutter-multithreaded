@@ -41,6 +41,7 @@
 #include "clutter-device-manager-core-x11.h"
 #include "clutter-device-manager-xi2.h"
 #include "clutter-settings-x11.h"
+#include "clutter-settings-private.h"
 #include "clutter-stage-x11.h"
 #include "clutter-x11.h"
 
@@ -162,24 +163,24 @@ clutter_backend_x11_xsettings_notify (const char       *name,
   if (setting == NULL)
     return;
 
-  g_object_freeze_notify (G_OBJECT (settings));
-
   for (i = 0; i < _n_clutter_settings_map; i++)
     {
       if (g_strcmp0 (name, CLUTTER_SETTING_X11_NAME (i)) == 0)
         {
-          GValue value = { 0, };
+          ClutterSettingsValue *value = value = _clutter_settings_value_new ();
+
+          value->property = CLUTTER_SETTING_PROPERTY (i);
 
           switch (setting->type)
             {
             case XSETTINGS_TYPE_INT:
-              g_value_init (&value, G_TYPE_INT);
-              g_value_set_int (&value, setting->data.v_int);
+              g_value_init (&value->gvalue, G_TYPE_INT);
+              g_value_set_int (&value->gvalue, setting->data.v_int);
               break;
 
             case XSETTINGS_TYPE_STRING:
-              g_value_init (&value, G_TYPE_STRING);
-              g_value_set_string (&value, setting->data.v_string);
+              g_value_init (&value->gvalue, G_TYPE_STRING);
+              g_value_set_string (&value->gvalue, setting->data.v_string);
               break;
 
             case XSETTINGS_TYPE_COLOR:
@@ -195,8 +196,8 @@ clutter_backend_x11_xsettings_notify (const char       *name,
                 color.alpha = (guint8) ((float) setting->data.v_color.alpha
                             / 65535.0 * 255);
 
-                g_value_init (&value, G_TYPE_BOXED);
-                clutter_value_set_color (&value, &color);
+                g_value_init (&value->gvalue, G_TYPE_BOXED);
+                clutter_value_set_color (&value->gvalue, &color);
               }
               break;
             }
@@ -206,17 +207,12 @@ clutter_backend_x11_xsettings_notify (const char       *name,
                         CLUTTER_SETTING_X11_NAME (i),
                         CLUTTER_SETTING_PROPERTY (i));
 
-          g_object_set_property (G_OBJECT (settings),
-                                 CLUTTER_SETTING_PROPERTY (i),
-                                 &value);
-
-          g_value_unset (&value);
-
+          _clutter_settings_queue_update (settings, value);
           break;
         }
     }
 
-  g_object_thaw_notify (G_OBJECT (settings));
+  _clutter_settings_queue_process (settings);
 }
 
 static void
@@ -352,6 +348,7 @@ clutter_backend_x11_post_parse (ClutterBackend  *backend,
 {
   ClutterBackendX11 *backend_x11 = CLUTTER_BACKEND_X11 (backend);
   ClutterSettings *settings;
+  ClutterSettingsValue *value;
   Atom atoms[N_ATOM_NAMES];
   double dpi;
 
@@ -420,7 +417,12 @@ clutter_backend_x11_post_parse (ClutterBackend  *backend,
   dpi = (((double) DisplayHeight (backend_x11->xdpy, backend_x11->xscreen_num) * 25.4)
       / (double) DisplayHeightMM (backend_x11->xdpy, backend_x11->xscreen_num));
 
-  g_object_set (settings, "font-dpi", (int) dpi * 1024, NULL);
+  value = g_new0 (ClutterSettingsValue, 1);
+  value->property = "font-dpi";
+  g_value_init (&value->gvalue, G_TYPE_INT);
+  g_value_set_int (&value->gvalue, (int) dpi * 1024);
+  _clutter_settings_queue_update (settings, value);
+  _clutter_settings_queue_process (settings);
 
   /* create XSETTINGS client */
   backend_x11->xsettings =

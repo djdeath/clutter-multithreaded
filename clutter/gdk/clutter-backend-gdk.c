@@ -58,6 +58,7 @@
 #include "clutter-event-private.h"
 #include "clutter-main.h"
 #include "clutter-private.h"
+#include "clutter-settings-private.h"
 
 #define clutter_backend_gdk_get_type _clutter_backend_gdk_get_type
 G_DEFINE_TYPE (ClutterBackendGdk, clutter_backend_gdk, CLUTTER_TYPE_BACKEND);
@@ -75,17 +76,17 @@ clutter_backend_gdk_init_settings (ClutterBackendGdk *backend_gdk)
 
   for (i = 0; i < G_N_ELEMENTS (_clutter_settings_map); i++)
     {
-      GValue val = G_VALUE_INIT;
+      ClutterSettingsValue *value = _clutter_settings_value_new ();
 
-      g_value_init (&val, CLUTTER_SETTING_TYPE(i));
+      value->property = CLUTTER_SETTING_GDK_NAME (i);
+      g_value_init (&value->gvalue, CLUTTER_SETTING_TYPE (i));
       gdk_screen_get_setting (backend_gdk->screen,
-			      CLUTTER_SETTING_GDK_NAME(i),
-			      &val);
-      g_object_set_property (G_OBJECT (settings),
-			     CLUTTER_SETTING_PROPERTY(i),
-			     &val);
-      g_value_unset (&val);
+			      value->property,
+			      &value->gvalue);
+      _clutter_settings_queue_update (settings, value);
     }
+
+  _clutter_settings_queue_process (settings);
 }
 
 void
@@ -99,20 +100,20 @@ _clutter_backend_gdk_update_setting (ClutterBackendGdk *backend_gdk,
     {
       if (g_strcmp0 (CLUTTER_SETTING_GDK_NAME (i), setting_name) == 0)
 	{
-	  GValue val = G_VALUE_INIT;
+          ClutterSettingsValue *value = _clutter_settings_value_new ();
 
-	  g_value_init (&val, CLUTTER_SETTING_TYPE (i));
+          value->property = CLUTTER_SETTING_GDK_NAME (i);
+          g_value_init (&value->gvalue, CLUTTER_SETTING_TYPE (i));
 	  gdk_screen_get_setting (backend_gdk->screen,
 				  CLUTTER_SETTING_GDK_NAME (i),
-				  &val);
-	  g_object_set_property (G_OBJECT (settings),
-				 CLUTTER_SETTING_PROPERTY (i),
-				 &val);
-	  g_value_unset (&val);
+				  &value->gvalue);
+          _clutter_settings_queue_update (settings, value);
 
 	  break;
 	}
     }
+
+  _clutter_settings_queue_process (settings);
 }
 
 static GdkFilterReturn

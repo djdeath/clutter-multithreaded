@@ -72,6 +72,9 @@ struct _ClutterSettings
   guint last_fontconfig_timestamp;
 
   guint password_hint_time;
+
+  /**/
+  GList *to_process_props;
 };
 
 struct _ClutterSettingsClass
@@ -789,4 +792,69 @@ _clutter_settings_read_from_key_file (ClutterSettings *settings,
     }
 
   g_free (pspecs);
+}
+
+ClutterSettingsValue *
+_clutter_settings_value_new (void)
+{
+  return g_new0 (ClutterSettingsValue, 1);
+}
+
+void
+_clutter_settings_queue_update (ClutterSettings *settings,
+                                ClutterSettingsValue *value)
+{
+  g_return_if_fail (CLUTTER_IS_SETTINGS (settings));
+  g_return_if_fail (value != NULL);
+
+  settings->to_process_props = g_list_append (settings->to_process_props,
+                                              value);
+}
+
+static gboolean
+_clutter_settings_queue_process_main_thread (ClutterSettings *settings)
+{
+  g_object_freeze_notify (G_OBJECT (settings));
+
+  while (settings->to_process_props)
+    {
+      ClutterSettingsValue *value =
+        (ClutterSettingsValue *) settings->to_process_props->data;
+
+      g_object_set_property (G_OBJECT (settings),
+                             value->property,  &value->gvalue);
+
+      g_value_unset (&value->gvalue);
+      g_free (value);
+
+      settings->to_process_props =
+        g_list_delete_link (settings->to_process_props,
+                            settings->to_process_props);
+    }
+
+  g_object_thaw_notify (G_OBJECT (settings));
+
+  return FALSE;
+}
+
+void
+_clutter_settings_queue_process (ClutterSettings *settings)
+{
+  GSource *source;
+  GMainContext *app_context;
+
+  g_return_if_fail (CLUTTER_IS_SETTINGS (settings));
+
+  if (settings->to_process_props == NULL)
+    return;
+
+  source = g_timeout_source_new (0);
+  g_source_set_callback (source,
+                         (GSourceFunc) _clutter_settings_queue_process_main_thread,
+                         settings,
+                         NULL);
+
+  /* Process the update in the application's thread. */
+  app_context = g_main_context_default ();
+  g_source_attach (source, app_context);
 }

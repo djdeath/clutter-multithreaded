@@ -32,6 +32,7 @@
 #include "clutter-private.h"
 #include "clutter-shader.h"
 #include "clutter-stage-private.h"
+#include "clutter-settings-private.h"
 
 #include "cogl/cogl.h"
 
@@ -49,6 +50,7 @@ clutter_backend_osx_post_parse (ClutterBackend  *backend,
                                 GError         **error)
 {
   ClutterSettings *settings = clutter_settings_get_default ();
+  ClutterSettingsValue *value;
 
   CLUTTER_OSX_POOL_ALLOC();
   /* getting standart dpi for main screen */
@@ -62,11 +64,21 @@ clutter_backend_osx_post_parse (ClutterBackend  *backend,
     {
       int font_dpi = size.height * 1024;
 
-      g_object_set (settings, "font-dpi", font_dpi, NULL);
+      value = _clutter_settings_value_new ();
+      value->property = "font-dpi";
+      g_value_init (&value->gvalue, G_TYPE_INT);
+      g_value_set_int (&value->gvalue, font_dpi);
+      _clutter_settings_queue_update (settings, value);
     }
 
   /* set the default font name */
-  g_object_set (settings, "font-name", DEFAULT_FONT_NAME, NULL);
+  value = _clutter_settings_value_new ();
+  value->property = "font-dpi";
+  g_value_init (&value->gvalue, G_TYPE_STRING);
+  g_value_set_string (&value->gvalue, DEFAULT_FONT_NAME);
+  _clutter_settings_queue_update (settings, value);
+
+  _clutter_settings_queue_process (settings);
 
   /* finish launching the application */
   [NSApp finishLaunching];
